@@ -73,13 +73,13 @@ pub fn alloc_scratch(self: *const Database) !Scratch {
 }
 
 /// The block (non-streaming) regular expression scanner.
-pub fn scan_block(self: *const Database, data: []const u8, opts: scan.Options) !void {
-    return scan.scan_block(@ptrCast(self.db), data, opts);
+pub fn scan_block(self: *const Database, data: []const u8, scratch: Scratch, opts: scan.Options) !void {
+    return scan.scan_block(@ptrCast(self.db), data, scratch, opts);
 }
 
 /// The vectored regular expression scanner.
-pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, opts: scan.Options) !void {
-    return scan.scan_vector(@ptrCast(self.db), data, opts);
+pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: scan.Options) !void {
+    return scan.scan_vector(@ptrCast(self.db), data, scratch, opts);
 }
 
 /// Open and initialise a stream.

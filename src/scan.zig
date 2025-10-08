@@ -11,18 +11,17 @@ pub const Scratch = @import("scratch.zig");
 
 pub const Options = struct {
     flags: u32 = 0,
-    scratch: Scratch,
     onEvent: match.EventHandler = null,
     context: ?*anyopaque = null,
 };
 
-pub fn scan_block(db: *const hs.hs_database_t, data: []const u8, opts: Options) !void {
+pub fn scan_block(db: *const hs.hs_database_t, data: []const u8, scratch: Scratch, opts: Options) !void {
     const ctx = match.Context.init(opts.onEvent, opts.context);
 
-    return common.check(hs.hs_scan(db, data.ptr, @intCast(data.len), opts.flags, @ptrCast(opts.scratch.scratch), ctx.onEvent, @constCast(&ctx)));
+    return common.check(hs.hs_scan(db, data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.scratch), ctx.onEvent, @constCast(&ctx)));
 }
 
-pub fn scan_vector(db: *const hs.hs_database_t, data: []const std.posix.iovec_const, opts: Options) !void {
+pub fn scan_vector(db: *const hs.hs_database_t, data: []const std.posix.iovec_const, scratch: Scratch, opts: Options) !void {
     var ptrs: [data.len]*const u8 = undefined;
     var lens: [data.len]u32 = undefined;
 
@@ -33,5 +32,5 @@ pub fn scan_vector(db: *const hs.hs_database_t, data: []const std.posix.iovec_co
 
     const ctx = match.Context.init(opts.onEvent, opts.context);
 
-    return common.check(hs.hs_scan_vector(db, ptrs.ptr, lens.ptr, @intCast(data.len), opts.flags, @ptrCast(opts.scratch.scratch), ctx.onEvent, @constCast(&ctx)));
+    return common.check(hs.hs_scan_vector(db, ptrs.ptr, lens.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.scratch), ctx.onEvent, @constCast(&ctx)));
 }

@@ -9,8 +9,6 @@ pub const Action = enum(c_int) {
     Terminate = 1,
 };
 
-pub const StartOffsetPastHorizon = hs.HS_OFFSET_PAST_HORIZON;
-
 pub const Event = struct {
     /// The ID number of the expression that matched.
     id: u32,
@@ -32,7 +30,11 @@ pub const Event = struct {
     context: ?*anyopaque,
 
     pub fn isStartOffsetPastHorizon(self: Event) bool {
-        return self.from == StartOffsetPastHorizon;
+        return self.from == hs.HS_OFFSET_PAST_HORIZON;
+    }
+
+    pub fn getData(self: *const Event, comptime T: type) *const T {
+        return @ptrCast(@alignCast(self.context));
     }
 };
 
