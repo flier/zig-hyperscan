@@ -13,10 +13,12 @@ const hs = @cImport({
 
 const common = @import("common.zig");
 const compile_ = @import("compile.zig");
-const runtime = @import("runtime.zig");
+const scan = @import("scan.zig");
+const Scratch = @import("scratch.zig");
+const Stream = @import("stream.zig");
 
 pub const CompileOptions = compile_.CompileOptions;
-pub const ScanOptions = runtime.ScanOptions;
+pub const ScanOptions = scan.Options;
 pub const Mode = compile_.Mode;
 
 pub const Database = @This();
@@ -66,16 +68,21 @@ pub fn compile(expr: []const u8, opts: CompileOptions) !Database {
 }
 
 /// Allocate a "scratch" space for use by Hyperscan.
-pub fn alloc_scratch(self: *const Database) !runtime.Scratch {
-    return runtime.Scratch.alloc(@ptrCast(self.db));
+pub fn alloc_scratch(self: *const Database) !Scratch {
+    return Scratch.alloc(@ptrCast(self.db));
 }
 
 /// The block (non-streaming) regular expression scanner.
-pub fn scan_block(self: *const Database, data: []const u8, opts: runtime.ScanOptions) !void {
-    return runtime.scan_block(@ptrCast(self.db), data, opts);
+pub fn scan_block(self: *const Database, data: []const u8, opts: scan.Options) !void {
+    return scan.scan_block(@ptrCast(self.db), data, opts);
 }
 
 /// The vectored regular expression scanner.
-pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, opts: runtime.ScanOptions) !void {
-    return runtime.scan_vector(@ptrCast(self.db), data, opts);
+pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, opts: scan.Options) !void {
+    return scan.scan_vector(@ptrCast(self.db), data, opts);
+}
+
+/// Open and initialise a stream.
+pub fn open_stream(self: *const Database, opts: Stream.OpenOptions) !Stream {
+    return Stream.open(@ptrCast(self.db), opts);
 }

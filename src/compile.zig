@@ -124,8 +124,17 @@ pub const Platform = struct {
 };
 
 pub const CompileOptions = struct {
+    /// Flags which modify the behaviour of the expression.
     flags: Flags = .Empty,
-    mode: Mode = .Block,
+    /// Compile mode flags
+    mode: Mode,
+    /// Use full precision to track start of match offsets in stream state.
+    som_horizon_large: bool = false,
+    /// Use medium precision to track start of match offsets in stream state.
+    som_horizon_medium: bool = false,
+    /// Use limited precision to track start of match offsets in stream state.
+    som_horizon_small: bool = false,
+    /// The target platform for the database.
     platform: ?Platform = null,
 };
 
@@ -134,7 +143,16 @@ pub fn compile(expr: []const u8, opts: CompileOptions) !*const hs.hs_database_t 
     var err: ?*hs.hs_compile_error_t = null;
 
     const flags = @intFromEnum(opts.flags);
-    const mode = @intFromEnum(opts.mode);
+    var mode = @intFromEnum(opts.mode);
+
+    if (opts.som_horizon_large) {
+        mode |= hs.HS_MODE_SOM_HORIZON_LARGE;
+    } else if (opts.som_horizon_medium) {
+        mode |= hs.HS_MODE_SOM_HORIZON_MEDIUM;
+    } else if (opts.som_horizon_small) {
+        mode |= hs.HS_MODE_SOM_HORIZON_SMALL;
+    }
+
     const platform = if (opts.platform) |p| &hs.hs_platform_info_t{
         .tune = @intFromEnum(p.tune),
         .cpu_features = @intFromEnum(p.cpu_features),
