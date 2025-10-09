@@ -128,13 +128,7 @@ pub fn compile(pattern: *const Pattern, opts: CompileOptions) !*const hs.hs_data
     const _compile = if (opts.literal) hs.hs_compile_lit else hs.hs_compile;
     const res = _compile(pattern.expr.ptr, flags, pattern.expr.len, mode, platform, &db, &err);
 
-    if (err) |ce| {
-        defer check(hs.hs_free_compile_error(ce)) catch |e| {
-            std.log.err("free compile error: {s}", .{@errorName(e)});
-        };
-
-        std.log.warn("compile expression `{}` failed, {s}", .{ pattern.*, ce.message });
-    }
+    free_compile_error([_]Pattern{pattern.*}, err);
 
     try check(res);
 
@@ -142,22 +136,32 @@ pub fn compile(pattern: *const Pattern, opts: CompileOptions) !*const hs.hs_data
 }
 
 /// The multiple regular expression compiler.
-pub fn compile_multi(patterns: *const []const Pattern, opts: CompileOptions) !*const hs.hs_database_t {
+pub fn compile_multi(patterns: []const Pattern, opts: CompileOptions) !*const hs.hs_database_t {
     var exprs = try std.ArrayList([*]const u8).initCapacity(opts.allocator, patterns.len);
     var flags = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
     var ids = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
     var lens = try std.ArrayList(usize).initCapacity(opts.allocator, patterns.len);
+    var exts = try std.ArrayList(hs.hs_expr_ext_t).initCapacity(opts.allocator, patterns.len);
+    var exts_ptrs = try std.ArrayList(*const hs.hs_expr_ext_t).initCapacity(opts.allocator, patterns.len);
 
     defer exprs.deinit(opts.allocator);
     defer flags.deinit(opts.allocator);
     defer ids.deinit(opts.allocator);
     defer lens.deinit(opts.allocator);
+    defer exts.deinit(opts.allocator);
+    defer exts_ptrs.deinit(opts.allocator);
 
-    for (patterns.*, 0..) |pattern, i| {
+    var has_exts = false;
+
+    for (patterns, 0..) |pattern, i| {
         try exprs.append(opts.allocator, pattern.expr.ptr);
         try flags.append(opts.allocator, pattern.flags.value());
         try ids.append(opts.allocator, pattern.id orelse @intCast(i));
         try lens.append(opts.allocator, pattern.expr.len);
+        try exts.append(opts.allocator, if (pattern.ext) |ext| @bitCast(ext.value()) else hs.hs_expr_ext_t{});
+        try exts_ptrs.append(opts.allocator, &exts.items[exts.items.len - 1]);
+
+        has_exts |= pattern.ext != null;
     }
 
     const elems: u32 = @intCast(patterns.len);
@@ -167,17 +171,29 @@ pub fn compile_multi(patterns: *const []const Pattern, opts: CompileOptions) !*c
     var db: ?*hs.hs_database_t = null;
     var err: ?*hs.hs_compile_error_t = null;
 
-    const res = if (opts.literal) hs.hs_compile_lit_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, lens.items.ptr, elems, mode, platform, &db, &err) else hs.hs_compile_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, elems, mode, platform, &db, &err);
+    var res: c_int = 0;
 
+    if (opts.literal) {
+        res = hs.hs_compile_lit_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, lens.items.ptr, elems, mode, platform, &db, &err);
+    } else if (has_exts) {
+        res = hs.hs_compile_ext_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, exts_ptrs.items.ptr, elems, mode, platform, &db, &err);
+    } else {
+        res = hs.hs_compile_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, elems, mode, platform, &db, &err);
+    }
+
+    free_compile_error(patterns, err);
+
+    try check(res);
+
+    return db orelse return error.UnknownError;
+}
+
+fn free_compile_error(patterns: []const Pattern, err: ?*hs.hs_compile_error_t) void {
     if (err) |ce| {
         defer check(hs.hs_free_compile_error(ce)) catch |e| {
             std.log.err("free compile error: {s}", .{@errorName(e)});
         };
 
-        std.log.warn("compile expression `{f}` failed, {s}", .{ patterns.*[@intCast(ce.expression)], ce.message });
+        std.log.warn("compile expression `{f}` failed, {s}", .{ patterns[@intCast(ce.expression)], ce.message });
     }
-
-    try check(res);
-
-    return db orelse return error.UnknownError;
 }

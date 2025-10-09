@@ -109,7 +109,7 @@ pub fn main() !void {
 
     // Compile patterns into a database
 
-    var db = try hs.Database.compile_multi(&opts.patterns.items, .{
+    var db = try hs.Database.compile_multi(opts.patterns.items, .{
         .mode = .{ .stream = opts.stream, .block = !opts.stream, .som_horizon_large = opts.stream },
     });
     defer db.deinit();

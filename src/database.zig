@@ -42,7 +42,7 @@ pub fn compile(pattern: *const Pattern, opts: CompileOptions) !Database {
 }
 
 ///  The multiple regular expression compiler.
-pub fn compile_multi(patterns: *const []const Pattern, opts: CompileOptions) !Database {
+pub fn compile_multi(patterns: []const Pattern, opts: CompileOptions) !Database {
     const db = try compile_.compile_multi(patterns, opts);
 
     return Database{
