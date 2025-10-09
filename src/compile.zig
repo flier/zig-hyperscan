@@ -146,31 +146,35 @@ pub fn compile_multi(patterns: *const []const Pattern, opts: CompileOptions) !*c
     var exprs = try std.ArrayList([*]const u8).initCapacity(opts.allocator, patterns.len);
     var flags = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
     var ids = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
+    var lens = try std.ArrayList(usize).initCapacity(opts.allocator, patterns.len);
 
     defer exprs.deinit(opts.allocator);
     defer flags.deinit(opts.allocator);
     defer ids.deinit(opts.allocator);
+    defer lens.deinit(opts.allocator);
 
     for (patterns.*, 0..) |pattern, i| {
         try exprs.append(opts.allocator, pattern.expr.ptr);
         try flags.append(opts.allocator, pattern.flags.value());
         try ids.append(opts.allocator, pattern.id orelse @intCast(i));
+        try lens.append(opts.allocator, pattern.expr.len);
     }
 
+    const elems: u32 = @intCast(patterns.len);
     const mode = opts.mode.value();
     const platform = if (opts.getPlatform()) |p| &p else null;
 
     var db: ?*hs.hs_database_t = null;
     var err: ?*hs.hs_compile_error_t = null;
 
-    const _compile_multi = if (opts.literal) hs.hs_compile_lit_multi else hs.hs_compile_multi;
-    const res = _compile_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, @intCast(patterns.len), mode, platform, &db, &err);
+    const res = if (opts.literal) hs.hs_compile_lit_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, lens.items.ptr, elems, mode, platform, &db, &err) else hs.hs_compile_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, elems, mode, platform, &db, &err);
+
     if (err) |ce| {
         defer check(hs.hs_free_compile_error(ce)) catch |e| {
             std.log.err("free compile error: {s}", .{@errorName(e)});
         };
 
-        std.log.warn("compile expression `{}` failed, {s}", .{ patterns[ce.expression], ce.message });
+        std.log.warn("compile expression `{f}` failed, {s}", .{ patterns.*[@intCast(ce.expression)], ce.message });
     }
 
     try check(res);
