@@ -6,59 +6,30 @@ const hs = @cImport({
 
 const check = @import("error.zig").check;
 
-/// Compile flags
-pub const Flags = enum(u32) {
-    /// No flags
-    Empty = 0,
-    /// Set case-insensitive matching.
-    Caseless = hs.HS_FLAG_CASELESS,
-    /// Matching a `.` will not exclude newlines.
-    DotAll = hs.HS_FLAG_DOTALL,
-    /// Set multi-line anchoring.
-    Multiline = hs.HS_FLAG_MULTILINE,
-    /// Set single-match only mode.
-    SingleMatch = hs.HS_FLAG_SINGLEMATCH,
-    /// Allow expressions that can match against empty buffers.
-    AllowEmpty = hs.HS_FLAG_ALLOWEMPTY,
-    /// Enable UTF-8 mode for this expression.
-    Utf8 = hs.HS_FLAG_UTF8,
-    /// Enable Unicode property support for this expression.
-    Ucp = hs.HS_FLAG_UCP,
-    /// Enable prefiltering mode for this expression.
-    Prefilter = hs.HS_FLAG_PREFILTER,
-    /// Enable leftmost start of match reporting.
-    SomLeftmost = hs.HS_FLAG_SOM_LEFTMOST,
-    /// Logical combination.
-    Combination = hs.HS_FLAG_COMBINATION,
-    /// Don't do any match reporting.
-    Quiet = hs.HS_FLAG_QUIET,
-};
+pub const Pattern = @import("pattern.zig");
 
 /// Compile mode flags
-pub const Mode = enum(u32) {
+pub const Mode = packed struct(u32) {
     /// Block scan (non-streaming) database.
-    Block = hs.HS_MODE_BLOCK,
+    block: bool = false,
     /// Streaming database.
-    Stream = hs.HS_MODE_STREAM,
+    stream: bool = false,
     /// Vectored scanning database.
-    Vectored = hs.HS_MODE_VECTORED,
+    vectored: bool = false,
+
+    _reserved: u21 = 0,
+
     /// Use full precision to track start of match offsets in stream state.
-    SomHorizonLarge = hs.HS_MODE_SOM_HORIZON_LARGE,
+    som_horizon_large: bool = false,
     /// Use medium precision to track start of match offsets in stream state.
-    SomHorizonMedium = hs.HS_MODE_SOM_HORIZON_MEDIUM,
+    som_horizon_medium: bool = false,
     /// Use limited precision to track start of match offsets in stream state.
-    SomHorizonSmall = hs.HS_MODE_SOM_HORIZON_SMALL,
+    som_horizon_small: bool = false,
 
-    pub fn isBlock(self: Mode) bool {
-        return (@intFromEnum(self) & hs.HS_MODE_BLOCK) == hs.HS_MODE_BLOCK;
-    }
+    _reserved2: u5 = 0,
 
-    pub fn isVectored(self: Mode) bool {
-        return (@intFromEnum(self) & hs.HS_MODE_VECTORED) == hs.HS_MODE_VECTORED;
-    }
-
-    pub fn isStream(self: Mode) bool {
-        return (@intFromEnum(self) & hs.HS_MODE_STREAM) == hs.HS_MODE_STREAM;
+    pub inline fn value(self: Mode) u32 {
+        return @bitCast(self);
     }
 };
 
@@ -126,48 +97,75 @@ pub const Platform = struct {
 
 /// Compile options.
 pub const CompileOptions = struct {
-    /// Flags which modify the behaviour of the expression.
-    flags: Flags = .Empty,
+    /// The allocator to use for the compile.
+    allocator: std.mem.Allocator = std.heap.c_allocator,
     /// Compile mode flags
     mode: Mode,
-    /// Use full precision to track start of match offsets in stream state.
-    som_horizon_large: bool = false,
-    /// Use medium precision to track start of match offsets in stream state.
-    som_horizon_medium: bool = false,
-    /// Use limited precision to track start of match offsets in stream state.
-    som_horizon_small: bool = false,
     /// The target platform for the database.
     platform: ?Platform = null,
+
+    fn getPlatform(self: CompileOptions) ?hs.hs_platform_info_t {
+        return if (self.platform) |p| hs.hs_platform_info_t{
+            .tune = @intFromEnum(p.tune),
+            .cpu_features = @intFromEnum(p.cpu_features),
+            .reserved1 = 0,
+            .reserved2 = 0,
+        } else null;
+    }
 };
 
 /// The basic regular expression compiler.
-pub fn compile(expr: []const u8, opts: CompileOptions) !*const hs.hs_database_t {
+pub fn compile(pattern: *const Pattern, opts: CompileOptions) !*const hs.hs_database_t {
     var db: ?*hs.hs_database_t = null;
     var err: ?*hs.hs_compile_error_t = null;
 
-    const flags = @intFromEnum(opts.flags);
-    var mode = @intFromEnum(opts.mode);
+    const flags = pattern.flags.value();
+    const mode = opts.mode.value();
+    const platform = if (opts.getPlatform()) |p| &p else null;
 
-    if (opts.som_horizon_large) {
-        mode |= hs.HS_MODE_SOM_HORIZON_LARGE;
-    } else if (opts.som_horizon_medium) {
-        mode |= hs.HS_MODE_SOM_HORIZON_MEDIUM;
-    } else if (opts.som_horizon_small) {
-        mode |= hs.HS_MODE_SOM_HORIZON_SMALL;
-    }
-
-    const platform = if (opts.platform) |p| &hs.hs_platform_info_t{
-        .tune = @intFromEnum(p.tune),
-        .cpu_features = @intFromEnum(p.cpu_features),
-        .reserved1 = 0,
-        .reserved2 = 0,
-    } else null;
-
-    const res = hs.hs_compile(expr.ptr, flags, mode, platform, &db, &err);
+    const res = hs.hs_compile(pattern.expr.ptr, flags, mode, platform, &db, &err);
     if (err) |ce| {
         defer check(hs.hs_free_compile_error(ce)) catch |e| {
             std.log.err("free compile error: {s}", .{@errorName(e)});
         };
+
+        std.log.warn("compile error: {s}", .{ce.message});
+    }
+
+    try check(res);
+
+    return db orelse return error.UnknownError;
+}
+
+/// The multiple regular expression compiler.
+pub fn compile_multi(patterns: *const []const Pattern, opts: CompileOptions) !*const hs.hs_database_t {
+    var exprs = try std.ArrayList([*]const u8).initCapacity(opts.allocator, patterns.len);
+    var flags = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
+    var ids = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
+
+    defer exprs.deinit(opts.allocator);
+    defer flags.deinit(opts.allocator);
+    defer ids.deinit(opts.allocator);
+
+    for (patterns.*, 0..) |pattern, i| {
+        try exprs.append(opts.allocator, pattern.expr.ptr);
+        try flags.append(opts.allocator, pattern.flags.value());
+        try ids.append(opts.allocator, pattern.id orelse @intCast(i));
+    }
+
+    const mode = opts.mode.value();
+    const platform = if (opts.getPlatform()) |p| &p else null;
+
+    var db: ?*hs.hs_database_t = null;
+    var err: ?*hs.hs_compile_error_t = null;
+
+    const res = hs.hs_compile_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, @intCast(patterns.len), mode, platform, &db, &err);
+    if (err) |ce| {
+        defer check(hs.hs_free_compile_error(ce)) catch |e| {
+            std.log.err("free compile error: {s}", .{@errorName(e)});
+        };
+
+        std.log.warn("compile expression #{} error: {s}", .{ ce.expression, ce.message });
     }
 
     try check(res);

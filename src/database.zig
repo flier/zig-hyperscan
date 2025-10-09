@@ -12,14 +12,19 @@ const hs = @cImport({
 });
 
 const check = @import("error.zig").check;
+
 const compile_ = @import("compile.zig");
-const scan = @import("scan.zig");
-const Scratch = @import("scratch.zig");
-const Stream = @import("stream.zig");
 
 pub const CompileOptions = compile_.CompileOptions;
-pub const ScanOptions = scan.Options;
 pub const Mode = compile_.Mode;
+pub const Pattern = compile_.Pattern;
+
+const scan = @import("scan.zig");
+
+pub const ScanOptions = scan.Options;
+
+const Scratch = @import("scratch.zig");
+const Stream = @import("stream.zig");
 
 pub const Database = @This();
 
@@ -27,8 +32,18 @@ ptr: *const hs.hs_database_t,
 mode: Mode,
 
 /// The basic regular expression compiler.
-pub fn compile(expr: []const u8, opts: CompileOptions) !Database {
-    const db = try compile_.compile(expr, opts);
+pub fn compile(pattern: *const Pattern, opts: CompileOptions) !Database {
+    const db = try compile_.compile(pattern, opts);
+
+    return Database{
+        .ptr = @ptrCast(db),
+        .mode = opts.mode,
+    };
+}
+
+///  The multiple regular expression compiler.
+pub fn compile_multi(patterns: *const []const Pattern, opts: CompileOptions) !Database {
+    const db = try compile_.compile_multi(patterns, opts);
 
     return Database{
         .ptr = @ptrCast(db),

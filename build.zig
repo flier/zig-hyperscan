@@ -1,11 +1,27 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const with_examples = b.option(bool, "with-examples", "Build examples") orelse false;
-    const with_tests = b.option(bool, "with-tests", "Build tests") orelse false;
+    const skip_examples = b.option(bool, "skip-examples", "Don't build examples") orelse false;
+    const skip_tests = b.option(bool, "skip-tests", "Don't build tests") orelse false;
 
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    // Add search prefix for HYPERSCAN_ROOT
+    if (std.posix.getenv("HYPERSCAN_ROOT")) |p| {
+        b.addSearchPrefix(p);
+    }
+
+    // Add search prefix for Homebrew
+    switch (target.result.os.tag) {
+        .macos => switch (target.result.cpu.arch.family()) {
+            .aarch64 => b.addSearchPrefix("/opt/homebrew/"),
+            .x86 => b.addSearchPrefix("/usr/local/"),
+            else => {},
+        },
+        .linux => b.addSearchPrefix("/home/linuxbrew/.linuxbrew"),
+        else => {},
+    }
 
     const hyperscan_mod = b.addModule("hyperscan", .{
         .root_source_file = b.path("src/root.zig"),
@@ -21,7 +37,16 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(hyperscan_lib);
 
-    if (with_examples) {
+    const hyperscan_dylib = b.addLibrary(.{
+        .name = "hyperscan",
+        .linkage = .dynamic,
+        .root_module = hyperscan_mod,
+    });
+
+    b.installArtifact(hyperscan_dylib);
+
+    // Build examples
+    if (!skip_examples) {
         const simplegrep = b.addExecutable(.{
             .name = "simplegrep",
             .root_module = b.createModule(.{
@@ -49,7 +74,8 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    if (with_tests) {
+    // Build tests
+    if (!skip_tests) {
         const unit_tests = b.addModule("unit_tests", .{
             .root_source_file = b.path("src/test.zig"),
             .target = target,
