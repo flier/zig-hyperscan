@@ -66,9 +66,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer {
-        const leaked = gpa.deinit();
-
-        if (leaked == std.heap.Check.leak) std.log.err("Memory leak detected: {d} bytes", .{leaked});
+        _ = gpa.deinit();
     }
 
     const args = try std.process.argsAlloc(allocator);
@@ -78,11 +76,12 @@ pub fn main() !void {
 
     std.log.debug("Options: {f}", .{opts});
 
-    const db = try hs.Database.compile(opts.pattern, .{
+    var db = try hs.Database.compile(opts.pattern, .{
         .mode = if (opts.stream) .Stream else .Block,
         .som_horizon_large = opts.stream,
         .flags = .SomLeftmost,
     });
+    defer db.deinit();
 
     const db_info = try db.info(allocator);
     defer allocator.free(db_info);
@@ -98,50 +97,58 @@ pub fn main() !void {
     defer f.close();
 
     if (opts.stream) {
-        const stream = try db.open_stream(.{});
-        const ctx = Context{
-            .patterns = &[_][]const u8{opts.pattern},
-        };
-
-        var buf: [4096]u8 = undefined;
-        var off: usize = 0;
-        var r = f.reader(&buf);
-
-        while (!r.atEnd()) {
-            const rd = r.readStreaming(&buf) catch |err| switch (err) {
-                error.EndOfStream => break,
-                else => return err,
-            };
-            const data = buf[0..rd];
-
-            try stream.scan(data, scratch, .{
-                .onEvent = onEvent,
-                .context = @constCast(&ctx),
-            });
-
-            off += rd;
-        }
-
-        try stream.close(scratch, .{
-            .onEvent = onEvent,
-            .context = @constCast(&ctx),
-        });
+        try scan_stream(f, opts.pattern, db, scratch);
     } else {
-        const data = try f.readToEndAlloc(allocator, std.math.maxInt(usize));
-        defer allocator.free(data);
+        try scan_block(allocator, f, opts.pattern, db, scratch);
+    }
+}
 
-        std.log.debug("Data size: {d} bytes", .{data.len});
+fn scan_block(allocator: std.mem.Allocator, f: std.fs.File, pattern: []const u8, db: hs.Database, scratch: hs.Scratch) !void {
+    const data = try f.readToEndAlloc(allocator, std.math.maxInt(usize));
+    defer allocator.free(data);
 
-        const ctx = Context{
-            .patterns = &[_][]const u8{opts.pattern},
-            .data = data,
+    std.log.debug("Data size: {d} bytes", .{data.len});
+
+    const ctx = Context{
+        .patterns = &[_][]const u8{pattern},
+        .data = data,
+    };
+
+    try db.scan_block(data, scratch, .{
+        .onEvent = onEvent,
+        .context = @constCast(&ctx),
+    });
+}
+
+fn scan_stream(f: std.fs.File, pattern: []const u8, db: hs.Database, scratch: hs.Scratch) !void {
+    const stream = try db.open_stream(.{});
+    const ctx = Context{
+        .patterns = &[_][]const u8{pattern},
+    };
+
+    var buf: [4096]u8 = undefined;
+    var off: usize = 0;
+    var r = f.readerStreaming(&buf);
+
+    while (!r.atEnd()) {
+        const rd = r.readStreaming(&buf) catch |err| switch (err) {
+            error.EndOfStream => break,
+            else => return err,
         };
+        const data = buf[0..rd];
 
-        try db.scan_block(data, scratch, .{
+        try stream.scan(data, scratch, .{
             .onEvent = onEvent,
             .context = @constCast(&ctx),
         });
+
+        off += rd;
     }
+
+    try stream.close(scratch, .{
+        .onEvent = onEvent,
+        .context = @constCast(&ctx),
+    });
 }
 
 const Context = struct {
@@ -152,12 +159,14 @@ const Context = struct {
 fn onEvent(evt: hs.MatchEvent) hs.MatchAction {
     const ctx = evt.getData(Context);
 
-    if (evt.isStartOffsetPastHorizon()) {
-        std.log.info("Match for pattern #{} `{s}` at offset ..{}", .{ evt.id, ctx.patterns[evt.id], evt.to });
-    } else if (ctx.data) |data| {
-        std.log.info("Match for pattern #{} `{s}` at offset {}..{}: {s}", .{ evt.id, ctx.patterns[evt.id], evt.from, evt.to, data[evt.from..evt.to] });
+    if (evt.from) |from| {
+        if (ctx.data) |data| {
+            std.log.info("Match for pattern #{} `{s}` at offset {}..{}: {s}", .{ evt.id, ctx.patterns[evt.id], from, evt.to, data[from..evt.to] });
+        } else {
+            std.log.info("Match for pattern #{} `{s}` at offset {}..{}", .{ evt.id, ctx.patterns[evt.id], from, evt.to });
+        }
     } else {
-        std.log.info("Match for pattern #{} `{s}` at offset {}..{}", .{ evt.id, ctx.patterns[evt.id], evt.from, evt.to });
+        std.log.info("Match for pattern #{} `{s}` at offset ..{}", .{ evt.id, ctx.patterns[evt.id], evt.to });
     }
 
     return .Continue;

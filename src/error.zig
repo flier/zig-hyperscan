@@ -55,8 +55,3 @@ pub fn check(err: hs.hs_error_t) Error!void {
         else => {},
     }
 }
-
-/// Utility function for identifying this release version.
-pub fn version() []const u8 {
-    return hs.hs_version();
-}

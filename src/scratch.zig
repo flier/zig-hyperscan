@@ -6,20 +6,20 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const common = @import("common.zig");
+const check = @import("error.zig").check;
 
 const Scratch = @This();
 
-scratch: *hs.hs_scratch_t,
+ptr: *hs.hs_scratch_t,
 
 /// Allocate a "scratch" space for use by Hyperscan.
 pub fn alloc(db: *const hs.hs_database_t) !Scratch {
     var scratch: ?*hs.hs_scratch_t = null;
 
-    try common.check(hs.hs_alloc_scratch(db, &scratch));
+    try check(hs.hs_alloc_scratch(db, &scratch));
 
     return if (scratch) |s| Scratch{
-        .scratch = @ptrCast(s),
+        .ptr = @ptrCast(s),
     } else error.UnknownError;
 }
 
@@ -27,10 +27,10 @@ pub fn alloc(db: *const hs.hs_database_t) !Scratch {
 pub fn clone(self: *const Scratch) !Scratch {
     var scratch: ?*hs.hs_scratch_t = null;
 
-    try common.check(hs.hs_clone_scratch(self.scratch, &scratch));
+    try check(hs.hs_clone_scratch(self.ptr, &scratch));
 
     return Scratch{
-        .scratch = scratch,
+        .ptr = scratch,
     };
 }
 
@@ -38,14 +38,14 @@ pub fn clone(self: *const Scratch) !Scratch {
 pub fn size(self: *const Scratch) !usize {
     var sz: usize = 0;
 
-    try common.check(hs.hs_scratch_size(self.scratch, &sz));
+    try check(hs.hs_scratch_size(self.ptr, &sz));
 
     return sz;
 }
 
 /// Free a scratch block previously allocated by `alloc` or `clone`.
 pub fn deinit(self: *const Scratch) void {
-    common.check(hs.hs_free_scratch(self.scratch)) catch |e| {
+    check(hs.hs_free_scratch(self.ptr)) catch |e| {
         std.log.err("free scratch: {s}", .{@errorName(e)});
     };
 }

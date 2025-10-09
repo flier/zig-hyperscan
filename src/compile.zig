@@ -4,7 +4,7 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const common = @import("common.zig");
+const check = @import("error.zig").check;
 
 /// Compile flags
 pub const Flags = enum(u32) {
@@ -91,7 +91,7 @@ pub const Tune = enum(u32) {
 /// CPU feature support flags
 pub const CpuFeatures = enum(u64) {
     /// No CPU features
-    Empty = 0,
+    Generic = 0,
     /// Intel(R) Advanced Vector Extensions 2 (Intel(R) AVX2)
     Avx2 = hs.HS_CPU_FEATURES_AVX2,
     /// Intel(R) Advanced Vector Extensions 512 (Intel(R) AVX512)
@@ -104,17 +104,18 @@ pub const CpuFeatures = enum(u64) {
 /// provided to the compile calls (compile, compile_multi, compile_ext_multi).
 pub const Platform = struct {
     tune: Tune = .Generic,
-    cpu_features: CpuFeatures = .Empty,
+    cpu_features: CpuFeatures = .Generic,
 
     /// Utility function to test the current system architecture.
     pub fn valid() !void {
-        return common.check(hs.hs_valid_platform());
+        return check(hs.hs_valid_platform());
     }
 
+    /// Populates the platform information based on the current host.
     pub fn populate() !Platform {
         var platform: hs.hs_platform_info_t = undefined;
 
-        try common.check(hs.hs_populate_platform(&platform));
+        try check(hs.hs_populate_platform(&platform));
 
         return Platform{
             .tune = @enumFromInt(platform.tune),
@@ -123,6 +124,7 @@ pub const Platform = struct {
     }
 };
 
+/// Compile options.
 pub const CompileOptions = struct {
     /// Flags which modify the behaviour of the expression.
     flags: Flags = .Empty,
@@ -138,6 +140,7 @@ pub const CompileOptions = struct {
     platform: ?Platform = null,
 };
 
+/// The basic regular expression compiler.
 pub fn compile(expr: []const u8, opts: CompileOptions) !*const hs.hs_database_t {
     var db: ?*hs.hs_database_t = null;
     var err: ?*hs.hs_compile_error_t = null;
@@ -161,11 +164,13 @@ pub fn compile(expr: []const u8, opts: CompileOptions) !*const hs.hs_database_t 
     } else null;
 
     const res = hs.hs_compile(expr.ptr, flags, mode, platform, &db, &err);
-    if (err) |e| {
-        defer common.check(hs.hs_free_compile_error(e)) catch {};
+    if (err) |ce| {
+        defer check(hs.hs_free_compile_error(ce)) catch |e| {
+            std.log.err("free compile error: {s}", .{@errorName(e)});
+        };
     }
 
-    try common.check(res);
+    try check(res);
 
     return db orelse return error.UnknownError;
 }

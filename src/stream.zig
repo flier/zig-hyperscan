@@ -6,17 +6,16 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const common = @import("common.zig");
-const match = @import("match.zig");
-const scan_ = @import("scan.zig");
-
+const check = @import("error.zig").check;
+const Context = @import("match.zig").Context;
+const ScanOptions = @import("scan.zig").Options;
 const Scratch = @import("scratch.zig");
 
-const ScanOptions = scan_.Options;
 pub const Stream = @This();
 
-id: *hs.hs_stream_t,
+stream_id: *hs.hs_stream_t,
 
+/// Open options.
 pub const OpenOptions = struct {
     flags: u32 = 0,
 };
@@ -25,32 +24,32 @@ pub const OpenOptions = struct {
 pub fn open(db: *const hs.hs_database_t, opts: OpenOptions) !Stream {
     var stream_id: ?*hs.hs_stream_t = null;
 
-    try common.check(hs.hs_open_stream(db, opts.flags, &stream_id));
+    try check(hs.hs_open_stream(db, opts.flags, &stream_id));
 
     return if (stream_id) |id| Stream{
-        .id = id,
+        .stream_id = id,
     } else error.UnknownError;
 }
 
 /// Write data to be scanned to the opened stream.
 pub fn scan(self: *const Stream, data: []const u8, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx = match.Context.init(opts.onEvent, opts.context);
+    const ctx = Context.init(opts.onEvent, opts.context);
 
-    return common.check(hs.hs_scan_stream(self.id, data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.scratch), ctx.onEvent, @constCast(&ctx)));
+    return check(hs.hs_scan_stream(self.stream_id, data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }
 
 /// Close a stream.
 pub fn close(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx = match.Context.init(opts.onEvent, opts.context);
+    const ctx = Context.init(opts.onEvent, opts.context);
 
-    return common.check(hs.hs_close_stream(self.id, @ptrCast(scratch.scratch), ctx.onEvent, @constCast(&ctx)));
+    return check(hs.hs_close_stream(self.stream_id, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }
 
 /// Reset a stream to an initial state.
 pub fn reset(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx = match.Context.init(opts.onEvent, opts.context);
+    const ctx = Context.init(opts.onEvent, opts.context);
 
-    return common.check(hs.hs_reset_stream(self.id, opts.flags, @ptrCast(scratch.scratch), ctx.onEvent, @constCast(&ctx)));
+    return check(hs.hs_reset_stream(self.stream_id, opts.flags, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }
 
 /// Duplicate the given stream.
@@ -59,10 +58,10 @@ pub fn reset(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
 pub fn copy(self: *const Stream) !Stream {
     const stream_id: ?*hs.hs_stream_t = null;
 
-    try common.check(hs.hs_copy_stream(stream_id, self.id));
+    try check(hs.hs_copy_stream(stream_id, self.stream_id));
 
     return Stream{
-        .id = stream_id,
+        .stream_id = stream_id,
     };
 }
 
@@ -72,7 +71,7 @@ pub fn copy(self: *const Stream) !Stream {
 /// (reporting any EOD matches if a non-NULL @p onEvent callback handler is provided).
 pub fn reset_and_copy(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
     const stream_id: ?*hs.hs_stream_t = null;
-    const ctx = match.Context.init(opts.onEvent, opts.context);
+    const ctx = Context.init(opts.onEvent, opts.context);
 
-    return common.check(hs.hs_reset_and_copy_stream(&stream_id, self.id, @ptrCast(scratch.scratch), ctx.onEvent, @constCast(&ctx)));
+    return check(hs.hs_reset_and_copy_stream(&stream_id, self.stream_id, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }

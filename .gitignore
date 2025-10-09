@@ -1,5 +1,6 @@
 .zig-cache/
 zig-out/
+docs/
 *.o
 
 # General
@@ -7,7 +8,8 @@ zig-out/
 __MACOSX/
 .AppleDouble
 .LSOverride
-Icon[]
+Icon[
+]
 
 # Thumbnails
 ._*
