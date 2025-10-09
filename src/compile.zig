@@ -103,6 +103,8 @@ pub const CompileOptions = struct {
     mode: Mode,
     /// The target platform for the database.
     platform: ?Platform = null,
+    /// Whether to compile a pure literal expression.
+    literal: bool = false,
 
     fn getPlatform(self: CompileOptions) ?hs.hs_platform_info_t {
         return if (self.platform) |p| hs.hs_platform_info_t{
@@ -123,13 +125,15 @@ pub fn compile(pattern: *const Pattern, opts: CompileOptions) !*const hs.hs_data
     const mode = opts.mode.value();
     const platform = if (opts.getPlatform()) |p| &p else null;
 
-    const res = hs.hs_compile(pattern.expr.ptr, flags, mode, platform, &db, &err);
+    const _compile = if (opts.literal) hs.hs_compile_lit else hs.hs_compile;
+    const res = _compile(pattern.expr.ptr, flags, pattern.expr.len, mode, platform, &db, &err);
+
     if (err) |ce| {
         defer check(hs.hs_free_compile_error(ce)) catch |e| {
             std.log.err("free compile error: {s}", .{@errorName(e)});
         };
 
-        std.log.warn("compile error: {s}", .{ce.message});
+        std.log.warn("compile expression `{}` failed, {s}", .{ pattern.*, ce.message });
     }
 
     try check(res);
@@ -159,13 +163,14 @@ pub fn compile_multi(patterns: *const []const Pattern, opts: CompileOptions) !*c
     var db: ?*hs.hs_database_t = null;
     var err: ?*hs.hs_compile_error_t = null;
 
-    const res = hs.hs_compile_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, @intCast(patterns.len), mode, platform, &db, &err);
+    const _compile_multi = if (opts.literal) hs.hs_compile_lit_multi else hs.hs_compile_multi;
+    const res = _compile_multi(exprs.items.ptr, flags.items.ptr, ids.items.ptr, @intCast(patterns.len), mode, platform, &db, &err);
     if (err) |ce| {
         defer check(hs.hs_free_compile_error(ce)) catch |e| {
             std.log.err("free compile error: {s}", .{@errorName(e)});
         };
 
-        std.log.warn("compile expression #{} error: {s}", .{ ce.expression, ce.message });
+        std.log.warn("compile expression `{}` failed, {s}", .{ patterns[ce.expression], ce.message });
     }
 
     try check(res);
