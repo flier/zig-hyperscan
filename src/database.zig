@@ -80,6 +80,15 @@ pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, s
     return scan.scan_vector(@ptrCast(self.ptr), data, scratch, opts);
 }
 
+/// Provides the size of the stream state allocated by a single stream opened against the given database.
+pub fn stream_size(self: *const Database) !usize {
+    var sz: usize = 0;
+
+    try check(hs.hs_stream_size(self.ptr, &sz));
+
+    return sz;
+}
+
 /// Open and initialise a stream.
 pub fn open_stream(self: *const Database, opts: Stream.OpenOptions) !Stream {
     return Stream.open(@ptrCast(self.ptr), opts);
