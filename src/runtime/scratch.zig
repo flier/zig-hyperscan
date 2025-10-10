@@ -26,6 +26,40 @@ pub fn alloc(db: *const Database) !Scratch {
     } else error.UnknownError;
 }
 
+/// Reallocate a "scratch" space for use with a different database.
+pub fn realloc(self: *Scratch, db: *const Database) !void {
+    try check(hs.hs_alloc_scratch(@ptrCast(db.ptr), @ptrCast(&self.ptr)));
+}
+
+/// Allocate a scratch space that is a clone of an existing scratch space.
+pub fn clone(self: *const Scratch) !Scratch {
+    var scratch: ?*hs.hs_scratch_t = null;
+
+    try check(hs.hs_clone_scratch(self.ptr, &scratch));
+
+    return if (scratch) |ptr| Scratch{
+        .ptr = ptr,
+    } else error.UnknownError;
+}
+
+/// Provides the size of the given scratch space.
+pub fn size(self: *const Scratch) !usize {
+    var sz: usize = 0;
+
+    try check(hs.hs_scratch_size(self.ptr, &sz));
+
+    return sz;
+}
+
+/// Free a scratch block previously allocated by `alloc` or `clone`.
+pub fn deinit(self: *const Scratch) void {
+    check(hs.hs_free_scratch(self.ptr)) catch |e| {
+        std.log.err("free scratch: {s}", .{@errorName(e)});
+    };
+}
+
+// Unit tests
+
 test alloc {
     const pattern = try Pattern.parse("foo");
     const db = try Database.compile(&pattern, .{});
@@ -35,11 +69,6 @@ test alloc {
     defer scratch.deinit();
 
     try std.testing.expect(try scratch.size() >= 1000);
-}
-
-/// Reallocate a "scratch" space for use with a different database.
-pub fn realloc(self: *Scratch, db: *const Database) !void {
-    try check(hs.hs_alloc_scratch(@ptrCast(db.ptr), @ptrCast(&self.ptr)));
 }
 
 test realloc {
@@ -61,17 +90,6 @@ test realloc {
     try std.testing.expect(try scratch.size() >= scratch_size);
 }
 
-/// Allocate a scratch space that is a clone of an existing scratch space.
-pub fn clone(self: *const Scratch) !Scratch {
-    var scratch: ?*hs.hs_scratch_t = null;
-
-    try check(hs.hs_clone_scratch(self.ptr, &scratch));
-
-    return if (scratch) |ptr| Scratch{
-        .ptr = ptr,
-    } else error.UnknownError;
-}
-
 test clone {
     const foo = try Pattern.parse("foo");
     const db = try Database.compile(&foo, .{});
@@ -86,15 +104,6 @@ test clone {
     try std.testing.expectEqual(try scratch.size(), try scratch2.size());
 }
 
-/// Provides the size of the given scratch space.
-pub fn size(self: *const Scratch) !usize {
-    var sz: usize = 0;
-
-    try check(hs.hs_scratch_size(self.ptr, &sz));
-
-    return sz;
-}
-
 test size {
     const foo = try Pattern.parse("foo");
     const db = try Database.compile(&foo, .{});
@@ -104,11 +113,4 @@ test size {
     defer scratch.deinit();
 
     try std.testing.expect(try scratch.size() >= 1000);
-}
-
-/// Free a scratch block previously allocated by `alloc` or `clone`.
-pub fn deinit(self: *const Scratch) void {
-    check(hs.hs_free_scratch(self.ptr)) catch |e| {
-        std.log.err("free scratch: {s}", .{@errorName(e)});
-    };
 }

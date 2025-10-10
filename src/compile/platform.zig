@@ -55,10 +55,6 @@ pub fn valid() !void {
     return check(hs.hs_valid_platform());
 }
 
-test valid {
-    try Platform.valid();
-}
-
 /// Populates the platform information based on the current host.
 pub fn populate() !Platform {
     var platform: hs.hs_platform_info_t = undefined;
@@ -71,13 +67,6 @@ pub fn populate() !Platform {
     };
 }
 
-test populate {
-    const platform = try Platform.populate();
-
-    try std.testing.expectEqual(platform.tune, .generic);
-    try std.testing.expectEqual(platform.cpu_features, null);
-}
-
 /// Utility function to convert the platform to a C type.
 pub inline fn raw(self: *const Platform) hs.hs_platform_info_t {
     return hs.hs_platform_info_t{
@@ -86,6 +75,19 @@ pub inline fn raw(self: *const Platform) hs.hs_platform_info_t {
         .reserved1 = 0,
         .reserved2 = 0,
     };
+}
+
+// Unit tests
+
+test valid {
+    try Platform.valid();
+}
+
+test populate {
+    const platform = try Platform.populate();
+
+    try std.testing.expectEqual(platform.tune, .generic);
+    try std.testing.expectEqual(platform.cpu_features, null);
 }
 
 test raw {

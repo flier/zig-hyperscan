@@ -66,6 +66,8 @@ pub fn analysis(expr: []const u8, flags: Flags, ext: ?Ext) !Info {
     } else error.UnknownError;
 }
 
+// Unit tests
+
 test analysis {
     try std.testing.expectEqualDeep(Info{
         .min_width = 3,

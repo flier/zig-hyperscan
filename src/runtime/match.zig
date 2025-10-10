@@ -110,16 +110,18 @@ fn onEvent(id: c_uint, from: c_ulonglong, to: c_ulonglong, flags: c_uint, contex
     return 0;
 }
 
+// Unit tests
+
 test onEvent {
     const empty = Context.init(null, null);
 
     try std.testing.expectEqual(0, onEvent(0, 0, 0, 0, @constCast(&empty)));
 
-    const terminate = Context.init(testHandler, null);
+    const terminate = Context.init(struct {
+        fn handler(_: Event) !void {
+            return error.Terminate;
+        }
+    }.handler, null);
 
     try std.testing.expectEqual(-1, onEvent(0, 0, 0, 0, @constCast(&terminate)));
-}
-
-fn testHandler(_: Event) !void {
-    return error.Terminate;
 }

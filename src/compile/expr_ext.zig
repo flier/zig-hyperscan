@@ -52,6 +52,8 @@ pub fn raw(self: *const Ext) hs.hs_expr_ext_t {
     };
 }
 
+// Unit tests
+
 test raw {
     const empty = Ext{};
     try std.testing.expectEqualDeep(hs.hs_expr_ext_t{}, empty.raw());
