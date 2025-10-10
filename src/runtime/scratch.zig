@@ -6,6 +6,9 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
+const Database = @import("../common.zig").Database;
+const Pattern = @import("../compile.zig").Pattern;
+
 const check = @import("../common.zig").check;
 
 const Scratch = @This();
@@ -13,14 +16,49 @@ const Scratch = @This();
 ptr: *hs.hs_scratch_t,
 
 /// Allocate a "scratch" space for use by Hyperscan.
-pub fn alloc(db: *const hs.hs_database_t) !Scratch {
+pub fn alloc(db: *const Database) !Scratch {
     var scratch: ?*hs.hs_scratch_t = null;
 
-    try check(hs.hs_alloc_scratch(db, &scratch));
+    try check(hs.hs_alloc_scratch(@ptrCast(db.ptr), &scratch));
 
     return if (scratch) |s| Scratch{
-        .ptr = @ptrCast(s),
+        .ptr = s,
     } else error.UnknownError;
+}
+
+test alloc {
+    const pattern = try Pattern.parse("foo");
+    const db = try Database.compile(&pattern, .{});
+    defer db.deinit();
+
+    const scratch = try alloc(&db);
+    defer scratch.deinit();
+
+    try std.testing.expect(try scratch.size() >= 1000);
+}
+
+/// Reallocate a "scratch" space for use with a different database.
+pub fn realloc(self: *Scratch, db: *const Database) !void {
+    try check(hs.hs_alloc_scratch(@ptrCast(db.ptr), @ptrCast(&self.ptr)));
+}
+
+test realloc {
+    const foo = try Pattern.parse("foo");
+    const db = try Database.compile(&foo, .{});
+    defer db.deinit();
+
+    var scratch = try db.alloc_scratch();
+    defer scratch.deinit();
+
+    const scratch_size = try scratch.size();
+
+    const foobar = try Pattern.parse("foobar");
+    const db2 = try Database.compile(&foobar, .{});
+    defer db2.deinit();
+
+    try scratch.realloc(&db2);
+
+    try std.testing.expect(try scratch.size() >= scratch_size);
 }
 
 /// Allocate a scratch space that is a clone of an existing scratch space.
@@ -29,9 +67,23 @@ pub fn clone(self: *const Scratch) !Scratch {
 
     try check(hs.hs_clone_scratch(self.ptr, &scratch));
 
-    return Scratch{
-        .ptr = scratch,
-    };
+    return if (scratch) |ptr| Scratch{
+        .ptr = ptr,
+    } else error.UnknownError;
+}
+
+test clone {
+    const foo = try Pattern.parse("foo");
+    const db = try Database.compile(&foo, .{});
+    defer db.deinit();
+
+    const scratch = try db.alloc_scratch();
+    defer scratch.deinit();
+
+    const scratch2 = try scratch.clone();
+    defer scratch2.deinit();
+
+    try std.testing.expectEqual(try scratch.size(), try scratch2.size());
 }
 
 /// Provides the size of the given scratch space.
@@ -41,6 +93,17 @@ pub fn size(self: *const Scratch) !usize {
     try check(hs.hs_scratch_size(self.ptr, &sz));
 
     return sz;
+}
+
+test size {
+    const foo = try Pattern.parse("foo");
+    const db = try Database.compile(&foo, .{});
+    defer db.deinit();
+
+    const scratch = try db.alloc_scratch();
+    defer scratch.deinit();
+
+    try std.testing.expect(try scratch.size() >= 1000);
 }
 
 /// Free a scratch block previously allocated by `alloc` or `clone`.

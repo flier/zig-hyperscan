@@ -81,17 +81,29 @@ pub fn size(self: *const Database) !usize {
 
 /// Allocate a "scratch" space for use by Hyperscan.
 pub fn alloc_scratch(self: *const Database) !Scratch {
-    return Scratch.alloc(@ptrCast(self.ptr));
+    return Scratch.alloc(self);
+}
+
+test alloc_scratch {
+    const pattern = try Pattern.parse("foo");
+
+    const db = try Database.compile(&pattern, .{});
+    defer db.deinit();
+
+    const scratch = try db.alloc_scratch();
+    defer scratch.deinit();
+
+    try std.testing.expect(try scratch.size() >= 1000);
 }
 
 /// The block (non-streaming) regular expression scanner.
 pub fn scan_block(self: *const Database, data: []const u8, scratch: Scratch, opts: ScanOptions) !void {
-    return runtime.scan_block(@ptrCast(self.ptr), data, scratch, opts);
+    return runtime.scan_block(self, data, scratch, opts);
 }
 
 /// The vectored regular expression scanner.
 pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: ScanOptions) !void {
-    return runtime.scan_vector(@ptrCast(self.ptr), data, scratch, opts);
+    return runtime.scan_vector(self, data, scratch, opts);
 }
 
 /// Provides the size of the stream state allocated by a single stream opened against the given database.
@@ -105,5 +117,5 @@ pub fn stream_size(self: *const Database) !usize {
 
 /// Open and initialise a stream.
 pub fn open_stream(self: *const Database, opts: Stream.OpenOptions) !Stream {
-    return Stream.open(@ptrCast(self.ptr), opts);
+    return Stream.open(self, opts);
 }

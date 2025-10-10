@@ -27,11 +27,8 @@ pub const Platform = compile.Platform;
 const runtime = @import("runtime.zig");
 
 pub const Scratch = runtime.Scratch;
-
-pub const MatchAction = runtime.MatchAction;
 pub const MatchEvent = runtime.MatchEvent;
 pub const MatchEventHandler = runtime.MatchEventHandler;
-
 pub const ScanOptions = runtime.ScanOptions;
 
 test {

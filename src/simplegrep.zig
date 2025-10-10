@@ -195,8 +195,8 @@ const Context = struct {
     data: ?[]const u8 = null,
 };
 
-fn onEvent(evt: hs.MatchEvent) hs.MatchAction {
-    const ctx = evt.getData(Context);
+fn onEvent(evt: hs.MatchEvent) !void {
+    const ctx = evt.data(Context);
 
     if (evt.from) |from| {
         if (ctx.data) |data| {
@@ -207,6 +207,4 @@ fn onEvent(evt: hs.MatchEvent) hs.MatchAction {
     } else {
         std.log.info("Match for pattern #{} `{f}` at offset ..{}", .{ evt.id, ctx.patterns[evt.id], evt.to });
     }
-
-    return .Continue;
 }

@@ -4,12 +4,6 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-/// A type for actions returned by the event handler.
-pub const Action = enum(c_int) {
-    Continue = 0,
-    Terminate = 1,
-};
-
 /// A type for event details passed to the event handler.
 pub const Event = struct {
     /// The ID number of the expression that matched.
@@ -37,15 +31,41 @@ pub const Event = struct {
     }
 
     /// Returns the data pointer stored in the event context.
-    pub fn getData(self: *const Event, comptime T: type) *const T {
+    pub fn data(self: *const Event, comptime T: type) *T {
         return @ptrCast(@alignCast(self.context));
     }
+
+    pub fn setData(self: *const Event, comptime T: type, value: T) void {
+        const p: *T = @ptrCast(@alignCast(self.context));
+
+        p.* = value;
+    }
+};
+
+test Event {
+    const n: i32 = 123;
+
+    const evt = Event{
+        .id = 0,
+        .from = null,
+        .to = 0,
+        .context = @constCast(&n),
+    };
+
+    try std.testing.expect(evt.isStartOffsetPastHorizon());
+    try std.testing.expectEqual(&n, evt.data(i32));
+}
+
+/// An error type for the event handler.
+pub const Error = error{
+    /// The scanning should terminate.
+    Terminate,
 };
 
 /// A callback function that will be invoked whenever a match is located in the target data during the execution of a scan.
 /// The callback function should return a value indicating whether or not matching should continue on the target data.
 /// If no callbacks are desired from a scan call, null may be provided in order to suppress match production.
-pub const EventHandler = ?*const fn (Event) Action;
+pub const EventHandler = ?*const fn (Event) Error!void;
 
 /// A context for the event handler.
 pub const Context = struct {
@@ -72,7 +92,7 @@ fn onEvent(id: c_uint, from: c_ulonglong, to: c_ulonglong, flags: c_uint, contex
     const ctx: *Context = @ptrCast(@alignCast(context));
 
     if (ctx.handler) |handler| {
-        const action = handler(Event{
+        const res = handler(Event{
             .id = id,
             .from = if (from == hs.HS_OFFSET_PAST_HORIZON) null else from,
             .to = to,
@@ -80,8 +100,26 @@ fn onEvent(id: c_uint, from: c_ulonglong, to: c_ulonglong, flags: c_uint, contex
             .context = ctx.context,
         });
 
-        return @intFromEnum(action);
+        if (res) |_| {
+            return 0;
+        } else |_| {
+            return -1;
+        }
     }
 
     return 0;
+}
+
+test onEvent {
+    const empty = Context.init(null, null);
+
+    try std.testing.expectEqual(0, onEvent(0, 0, 0, 0, @constCast(&empty)));
+
+    const terminate = Context.init(testHandler, null);
+
+    try std.testing.expectEqual(-1, onEvent(0, 0, 0, 0, @constCast(&terminate)));
+}
+
+fn testHandler(_: Event) !void {
+    return error.Terminate;
 }

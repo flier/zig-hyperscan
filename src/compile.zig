@@ -51,8 +51,8 @@ test Mode {
 pub const Options = struct {
     /// The allocator to use for the compile.
     allocator: std.mem.Allocator = std.heap.c_allocator,
-    /// Compile mode flags
-    mode: Mode,
+    /// The mode for the database.
+    mode: Mode = .{ .block = true },
     /// The target platform for the database.
     platform: ?Platform = null,
     /// Whether to compile a pure literal expression.
@@ -69,8 +69,12 @@ pub fn compile(pattern: *const Pattern, opts: Options) !*const hs.hs_database_t 
     const platform_info: ?hs.hs_platform_info_t = if (opts.platform) |p| @bitCast(p.raw()) else null;
     const platform = if (platform_info) |p| &p else null;
 
-    const compile_fn = if (opts.literal) hs.hs_compile_lit else hs.hs_compile;
-    const res = compile_fn(pattern.expr.ptr, flags, pattern.expr.len, mode, platform, &db, &err);
+    var res: c_int = 0;
+    if (opts.literal) {
+        res = hs.hs_compile_lit(pattern.expr.ptr, flags, pattern.expr.len, mode, platform, &db, &err);
+    } else {
+        res = hs.hs_compile(pattern.expr.ptr, flags, mode, platform, &db, &err);
+    }
 
     free_compile_error(err);
 
