@@ -50,7 +50,7 @@ pub fn build(b: *std.Build) void {
         const simplegrep = b.addExecutable(.{
             .name = "simplegrep",
             .root_module = b.createModule(.{
-                .root_source_file = b.path("src/simplegrep.zig"),
+                .root_source_file = b.path("examples/simplegrep.zig"),
                 .target = target,
                 .optimize = optimize,
                 .imports = &.{
