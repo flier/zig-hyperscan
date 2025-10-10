@@ -1,5 +1,7 @@
 //! The Hyperscan runtime API definition.
 
+const std = @import("std");
+
 pub const Stream = @import("runtime/stream.zig");
 pub const Scratch = @import("runtime/scratch.zig");
 
@@ -16,8 +18,5 @@ pub const scan_block = scan.scan_block;
 pub const scan_vector = scan.scan_vector;
 
 test {
-    _ = @import("runtime/match.zig");
-    _ = @import("runtime/scan.zig");
-    _ = @import("runtime/stream.zig");
-    _ = @import("runtime/scratch.zig");
+    std.testing.refAllDecls(@This());
 }

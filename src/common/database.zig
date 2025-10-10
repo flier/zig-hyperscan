@@ -30,24 +30,21 @@ pub const Database = @This();
 ptr: *const hs.hs_database_t,
 mode: Mode,
 
+pub fn init(db: *const hs.hs_database_t, mode: Mode) Database {
+    return Database{
+        .ptr = db,
+        .mode = mode,
+    };
+}
+
 /// The basic regular expression compiler.
 pub fn compile(pattern: *const Pattern, opts: CompileOptions) !Database {
-    const db = try compile_.compile(pattern, opts);
-
-    return Database{
-        .ptr = @ptrCast(db),
-        .mode = opts.mode,
-    };
+    return compile_.compile(pattern, opts);
 }
 
 ///  The multiple regular expression compiler.
 pub fn compile_multi(patterns: []const Pattern, opts: CompileOptions) !Database {
-    const db = try compile_.compile_multi(patterns, opts);
-
-    return Database{
-        .ptr = @ptrCast(db),
-        .mode = opts.mode,
-    };
+    return compile_.compile_multi(patterns, opts);
 }
 
 /// Free a compiled pattern database.

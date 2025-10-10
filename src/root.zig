@@ -2,7 +2,10 @@
 
 // The Hyperscan version API definition.
 
-const VERSION = @import("version.zig").VERSION;
+const ver = @import("version.zig");
+
+pub const VERSION = ver.VERSION;
+pub const version = ver.version;
 
 // The Hyperscan common API definition.
 
@@ -10,8 +13,6 @@ const common = @import("common.zig");
 
 pub const Database = common.Database;
 pub const Error = common.Error;
-
-pub const version = common.version;
 
 // The Hyperscan compiler API definition.
 
@@ -31,9 +32,8 @@ pub const MatchEvent = runtime.MatchEvent;
 pub const MatchEventHandler = runtime.MatchEventHandler;
 pub const ScanOptions = runtime.ScanOptions;
 
+const std = @import("std");
+
 test {
-    _ = @import("common.zig");
-    _ = @import("compile.zig");
-    _ = @import("runtime.zig");
-    _ = @import("version.zig");
+    std.testing.refAllDecls(@This());
 }

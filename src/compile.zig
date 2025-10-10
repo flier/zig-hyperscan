@@ -6,8 +6,14 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
+const Database = @import("common.zig").Database;
+const MatchEvent = @import("runtime.zig").MatchEvent;
+
 pub const Pattern = @import("compile/pattern.zig");
 pub const Platform = @import("compile/platform.zig");
+pub const Flags = @import("compile/flags.zig").Flags;
+pub const ExprExt = @import("compile/expr_ext.zig");
+pub const ExprInfo = @import("compile/expr_info.zig");
 
 const check = @import("common.zig").check;
 
@@ -60,7 +66,7 @@ pub const Options = struct {
 };
 
 /// The basic regular expression compiler.
-pub fn compile(pattern: *const Pattern, opts: Options) !*const hs.hs_database_t {
+pub fn compile(pattern: *const Pattern, opts: Options) !Database {
     var db: ?*hs.hs_database_t = null;
     var err: ?*hs.hs_compile_error_t = null;
 
@@ -80,11 +86,27 @@ pub fn compile(pattern: *const Pattern, opts: Options) !*const hs.hs_database_t 
 
     try check(res);
 
-    return db orelse return error.UnknownError;
+    return if (db) |ptr| Database.init(@ptrCast(ptr), opts.mode) else error.UnknownError;
+}
+
+test compile {
+    // parse a pattern.
+    const foobar = try Pattern.parse("f[o]+bar");
+
+    // compile the pattern into a block database.
+    const db = try compile(&foobar, .{});
+    defer db.deinit();
+
+    // parse a pure literal pattern.
+    const hello = try Pattern.parse("hello");
+
+    // compile the pure literal pattern into a streaming database.
+    const db2 = try compile(&hello, .{ .mode = .{ .stream = true }, .literal = true });
+    defer db2.deinit();
 }
 
 /// The multiple regular expression compiler.
-pub fn compile_multi(patterns: []const Pattern, opts: Options) !*const hs.hs_database_t {
+pub fn compile_multi(patterns: []const Pattern, opts: Options) !Database {
     var exprs = try std.ArrayList([*]const u8).initCapacity(opts.allocator, patterns.len);
     var flags = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
     var ids = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
@@ -134,7 +156,90 @@ pub fn compile_multi(patterns: []const Pattern, opts: Options) !*const hs.hs_dat
 
     try check(res);
 
-    return db orelse return error.UnknownError;
+    return if (db) |ptr| Database.init(@ptrCast(ptr), opts.mode) else error.UnknownError;
+}
+
+test compile_multi {
+    // parse some patterns.
+    const helo = try Pattern.parse("he[l]+o");
+    const hello = try Pattern.parse("hello");
+    const world = (try Pattern.parse("world"));
+
+    // create the slice that will store the last match offset
+    var ends = try std.ArrayList(u64).initCapacity(std.testing.allocator, 3);
+    defer ends.deinit(std.testing.allocator);
+
+    // compile multiple patterns into a block database.
+    {
+        const patterns = [_]Pattern{ helo, world };
+        const db = try compile_multi(&patterns, .{ .allocator = std.testing.allocator });
+        defer db.deinit();
+
+        const scratch = try db.alloc_scratch();
+        defer scratch.deinit();
+
+        // scan the text
+        try db.scan_block("hello world", scratch, .{
+            .allocator = std.testing.allocator,
+            .onEvent = testHandler,
+            .context = @constCast(&ends),
+        });
+
+        // expect the last match offset to be found
+        try std.testing.expectEqualSlices(u64, &[_]u64{ 5, 11 }, ends.items);
+    }
+
+    ends.clearAndFree(std.testing.allocator);
+
+    // compile multiple patterns with extensions into a block database.
+    {
+        const patterns = [_]Pattern{ helo, world.withExt(.{ .min_offset = 1 }) };
+        const db = try compile_multi(&patterns, .{ .allocator = std.testing.allocator });
+        defer db.deinit();
+
+        const scratch = try db.alloc_scratch();
+        defer scratch.deinit();
+
+        // scan the text
+        try db.scan_block("hello world", scratch, .{
+            .allocator = std.testing.allocator,
+            .onEvent = testHandler,
+            .context = @constCast(&ends),
+        });
+
+        // expect the last match offset to be found
+        try std.testing.expectEqualSlices(u64, &[_]u64{ 5, 11 }, ends.items);
+    }
+
+    ends.clearAndFree(std.testing.allocator);
+
+    // compile the pure literal pattern into a block database.
+    {
+        const patterns = [_]Pattern{ hello, world };
+        const db = try compile_multi(&patterns, .{ .allocator = std.testing.allocator, .literal = true });
+        defer db.deinit();
+
+        const scratch = try db.alloc_scratch();
+        defer scratch.deinit();
+
+        try db.scan_block("hello world", scratch, .{
+            .allocator = std.testing.allocator,
+            .onEvent = testHandler,
+            .context = @constCast(&ends),
+        });
+
+        try std.testing.expectEqualSlices(u64, &[_]u64{ 5, 11 }, ends.items);
+    }
+}
+
+fn testHandler(evt: MatchEvent) !void {
+    const ends = evt.data(std.ArrayList(u64));
+
+    ends.append(std.testing.allocator, evt.to) catch |err| {
+        std.log.err("append to ends: {s}", .{@errorName(err)});
+
+        return error.Terminate;
+    };
 }
 
 /// Free an error structure generated by `compile`or `compile_multi`.
@@ -152,10 +257,13 @@ pub fn free_compile_error(err: ?*hs.hs_compile_error_t) void {
     }
 }
 
+test free_compile_error {
+    // parse a pattern.
+    const foobar = try Pattern.parse("f(bar");
+
+    try std.testing.expectError(error.CompileError, compile(&foobar, .{}));
+}
+
 test {
-    _ = @import("compile/expr_ext.zig");
-    _ = @import("compile/expr_info.zig");
-    _ = @import("compile/flags.zig");
-    _ = @import("compile/pattern.zig");
-    _ = @import("compile/platform.zig");
+    std.testing.refAllDecls(@This());
 }

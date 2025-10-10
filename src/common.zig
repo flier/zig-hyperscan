@@ -10,6 +10,5 @@ pub const Error = err.Error;
 pub const check = err.check;
 
 test {
-    _ = @import("common/database.zig");
-    _ = @import("common/error.zig");
+    std.testing.refAllDecls(@This());
 }

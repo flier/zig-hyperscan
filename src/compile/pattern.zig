@@ -42,6 +42,16 @@ test init {
     }, Pattern.init("test", .{ .dot_all = true }));
 }
 
+/// Create a pattern with additional parameters.
+pub fn withExt(self: *const Pattern, ext: ExprExt) Pattern {
+    return Pattern{
+        .expr = self.expr,
+        .flags = self.flags,
+        .id = self.id,
+        .ext = ext,
+    };
+}
+
 /// Parse a pattern from a string.
 pub fn parse(s: []const u8) !Pattern {
     if (std.mem.indexOf(u8, s, ":/")) |start| {
