@@ -1,33 +1,42 @@
+//! The Hyperscan API definition.
+
+// The Hyperscan version API definition.
+
+const VERSION = @import("version.zig").VERSION;
+
 // The Hyperscan common API definition.
 
-pub const Database = @import("database.zig");
-pub const Error = @import("error.zig").Error;
+const common = @import("common.zig");
 
-const ver = @import("version.zig");
+pub const Database = common.Database;
+pub const Error = common.Error;
 
-pub const version = ver.version;
-pub const version_string = ver.version_string;
-pub const version_32bit = ver.version_32bit;
-pub const version_major = ver.version_major;
-pub const version_minor = ver.version_minor;
-pub const version_patch = ver.version_patch;
+pub const version = common.version;
 
 // The Hyperscan compiler API definition.
 
 const compile = @import("compile.zig");
 
-pub const CompileOptions = compile.CompileOptions;
+pub const CompileOptions = compile.Options;
 pub const Mode = compile.Mode;
 pub const Pattern = compile.Pattern;
 pub const Platform = compile.Platform;
 
 // The Hyperscan runtime API definition.
 
-pub const Scratch = @import("scratch.zig");
-pub const ScanOptions = @import("scan.zig").Options;
+const runtime = @import("runtime.zig");
 
-const match = @import("match.zig");
+pub const Scratch = runtime.Scratch;
 
-pub const MatchAction = match.Action;
-pub const MatchEvent = match.Event;
-pub const MatchEventHandler = match.EventHandler;
+pub const MatchAction = runtime.MatchAction;
+pub const MatchEvent = runtime.MatchEvent;
+pub const MatchEventHandler = runtime.MatchEventHandler;
+
+pub const ScanOptions = runtime.ScanOptions;
+
+test {
+    _ = @import("common.zig");
+    _ = @import("compile.zig");
+    _ = @import("runtime.zig");
+    _ = @import("version.zig");
+}

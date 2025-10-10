@@ -89,11 +89,15 @@ pub fn build(b: *std.Build) void {
             .root_module = hyperscan_mod,
         });
 
+        mod_tests.linkSystemLibrary("hs");
+
         b.installArtifact(mod_tests);
 
         const unit_tests = b.addTest(.{
             .root_module = unit_tests_mod,
         });
+
+        unit_tests.linkSystemLibrary("hs");
 
         b.installArtifact(unit_tests);
 

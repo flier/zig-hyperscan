@@ -6,8 +6,6 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-pub const hs_expr_ext_t = hs.hs_expr_ext_t;
-
 /// The minimum end offset in the data stream at which this expression should match successfully.
 min_offset: ?u64 = null,
 /// The maximum end offset in the data stream at which this expression should match successfully.
@@ -21,7 +19,8 @@ hamming_distance: ?u32 = null,
 
 const Ext = @This();
 
-pub fn value(self: *const Ext) hs.hs_expr_ext_t {
+/// Utility function to convert the expression ext to a C type.
+pub fn raw(self: *const Ext) hs.hs_expr_ext_t {
     var flags: u64 = 0;
 
     if (self.min_offset) |_| {
@@ -53,26 +52,15 @@ pub fn value(self: *const Ext) hs.hs_expr_ext_t {
     };
 }
 
-test value {
+test raw {
     const empty = Ext{};
-    try std.testing.expectEqualDeep(hs.hs_expr_ext_t{
-        .flags = 0,
-        .min_offset = 0,
-        .max_offset = 0,
-        .min_length = 0,
-        .edit_distance = 0,
-        .hamming_distance = 0,
-    }, value(&empty));
+    try std.testing.expectEqualDeep(hs.hs_expr_ext_t{}, empty.raw());
 
     const with_min = Ext{ .min_offset = 1 };
     try std.testing.expectEqualDeep(hs.hs_expr_ext_t{
         .flags = hs.HS_EXT_FLAG_MIN_OFFSET,
         .min_offset = 1,
-        .max_offset = 0,
-        .min_length = 0,
-        .edit_distance = 0,
-        .hamming_distance = 0,
-    }, value(&with_min));
+    }, with_min.raw());
 
     const with_max = Ext{ .max_offset = 1, .min_length = 1, .min_offset = 1 };
     try std.testing.expectEqualDeep(hs.hs_expr_ext_t{
@@ -80,7 +68,5 @@ test value {
         .min_offset = 1,
         .max_offset = 1,
         .min_length = 1,
-        .edit_distance = 0,
-        .hamming_distance = 0,
-    }, value(&with_max));
+    }, with_max.raw());
 }

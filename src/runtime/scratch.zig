@@ -6,7 +6,7 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const check = @import("error.zig").check;
+const check = @import("../common.zig").check;
 
 const Scratch = @This();
 

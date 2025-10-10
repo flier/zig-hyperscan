@@ -6,11 +6,11 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const check = @import("error.zig").check;
-
-const ExprInfo = @import("expr_info.zig");
-const ExprExt = @import("expr_ext.zig");
 const Flags = @import("flags.zig").Flags;
+const ExprExt = @import("expr_ext.zig");
+const ExprInfo = @import("expr_info.zig");
+
+const check = @import("../common.zig").check;
 
 /// The regular expression to compile.
 expr: []const u8,
@@ -29,6 +29,17 @@ pub fn init(expr: []const u8, flags: Flags) Pattern {
         .expr = expr,
         .flags = flags,
     };
+}
+
+test init {
+    try std.testing.expectEqualDeep(Pattern{
+        .expr = "test",
+    }, Pattern.init("test", .{}));
+
+    try std.testing.expectEqualDeep(Pattern{
+        .expr = "test",
+        .flags = .{ .dot_all = true },
+    }, Pattern.init("test", .{ .dot_all = true }));
 }
 
 /// Parse a pattern from a string.
@@ -62,28 +73,6 @@ pub fn parse(s: []const u8) !Pattern {
     };
 }
 
-/// Format a pattern to a string.
-pub fn format(self: *const Pattern, writer: *std.Io.Writer) !void {
-    if (self.id) |id| {
-        try writer.print("{d}:/{s}/{f}", .{ id, self.expr, self.flags });
-    } else if (self.flags.value() > 0) {
-        try writer.print("/{s}/{f}", .{ self.expr, self.flags });
-    } else {
-        try writer.print("{s}", .{self.expr});
-    }
-}
-
-test init {
-    try std.testing.expectEqualDeep(Pattern{
-        .expr = "test",
-    }, Pattern.init("test", .{}));
-
-    try std.testing.expectEqualDeep(Pattern{
-        .expr = "test",
-        .flags = .{ .dot_all = true },
-    }, Pattern.init("test", .{ .dot_all = true }));
-}
-
 test parse {
     try std.testing.expectEqualDeep(Pattern.init("test", .{}), try Pattern.parse("test"));
     try std.testing.expectEqualDeep(Pattern.init("test", .{}), try Pattern.parse("/test/"));
@@ -94,6 +83,22 @@ test parse {
     try std.testing.expectEqualDeep(Pattern.init(":/test/", .{}), try Pattern.parse(":/test/"));
     try std.testing.expectEqualDeep(Pattern.init(":/test", .{}), try Pattern.parse(":/test"));
     try std.testing.expectEqualDeep(Pattern.init("1:/test", .{}), try Pattern.parse("1:/test"));
+}
+
+/// Utility function providing information about a regular expression.
+pub fn expr_info(self: *const Pattern) !ExprInfo {
+    return ExprInfo.analysis(self.expr, self.flags, self.ext);
+}
+
+/// Format a pattern to a string.
+pub fn format(self: *const Pattern, writer: *std.Io.Writer) !void {
+    if (self.id) |id| {
+        try writer.print("{d}:/{s}/{f}", .{ id, self.expr, self.flags });
+    } else if (self.flags.value() > 0) {
+        try writer.print("/{s}/{f}", .{ self.expr, self.flags });
+    } else {
+        try writer.print("{s}", .{self.expr});
+    }
 }
 
 test format {

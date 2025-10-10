@@ -6,10 +6,12 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const check = @import("error.zig").check;
-const Context = @import("match.zig").Context;
+const match = @import("match.zig");
+
 const ScanOptions = @import("scan.zig").Options;
 const Scratch = @import("scratch.zig");
+
+const check = @import("../common.zig").check;
 
 pub const Stream = @This();
 
@@ -33,21 +35,21 @@ pub fn open(db: *const hs.hs_database_t, opts: OpenOptions) !Stream {
 
 /// Write data to be scanned to the opened stream.
 pub fn scan(self: *const Stream, data: []const u8, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx = Context.init(opts.onEvent, opts.context);
+    const ctx = match.Context.init(opts.onEvent, opts.context);
 
     return check(hs.hs_scan_stream(self.stream_id, data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }
 
 /// Close a stream.
 pub fn close(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx = Context.init(opts.onEvent, opts.context);
+    const ctx = match.Context.init(opts.onEvent, opts.context);
 
     return check(hs.hs_close_stream(self.stream_id, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }
 
 /// Reset a stream to an initial state.
 pub fn reset(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx = Context.init(opts.onEvent, opts.context);
+    const ctx = match.Context.init(opts.onEvent, opts.context);
 
     return check(hs.hs_reset_stream(self.stream_id, opts.flags, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }
@@ -71,7 +73,7 @@ pub fn copy(self: *const Stream) !Stream {
 /// (reporting any EOD matches if a non-NULL @p onEvent callback handler is provided).
 pub fn reset_and_copy(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
     const stream_id: ?*hs.hs_stream_t = null;
-    const ctx = Context.init(opts.onEvent, opts.context);
+    const ctx = match.Context.init(opts.onEvent, opts.context);
 
     return check(hs.hs_reset_and_copy_stream(&stream_id, self.stream_id, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
 }

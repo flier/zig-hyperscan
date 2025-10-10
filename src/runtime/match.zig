@@ -27,9 +27,9 @@ pub const Event = struct {
     /// The offset after the last byte that matches the expression.
     to: u64,
     /// This is provided for future use and is unused at present.
-    flags: u32,
+    flags: u32 = 0,
     /// The pointer supplied by the user to the `scan`, `scan_vector` or `scan_stream` function.
-    context: ?*anyopaque,
+    context: ?*anyopaque = null,
 
     /// Returns true if the start of match offset is past the horizon.
     pub fn isStartOffsetPastHorizon(self: Event) bool {

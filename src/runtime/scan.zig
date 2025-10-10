@@ -4,9 +4,10 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const check = @import("error.zig").check;
 const match = @import("match.zig");
 const Scratch = @import("scratch.zig");
+
+const check = @import("../common.zig").check;
 
 /// Scan options.
 pub const Options = struct {

@@ -11,20 +11,19 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
-const check = @import("error.zig").check;
+const compile_ = @import("../compile.zig");
 
-const compile_ = @import("compile.zig");
-
-pub const CompileOptions = compile_.CompileOptions;
+pub const CompileOptions = compile_.Options;
 pub const Mode = compile_.Mode;
 pub const Pattern = compile_.Pattern;
 
-const scan = @import("scan.zig");
+const runtime = @import("../runtime.zig");
 
-pub const ScanOptions = scan.Options;
+const ScanOptions = runtime.ScanOptions;
+const Scratch = runtime.Scratch;
+const Stream = runtime.Stream;
 
-const Scratch = @import("scratch.zig");
-const Stream = @import("stream.zig");
+const check = @import("../common.zig").check;
 
 pub const Database = @This();
 
@@ -86,13 +85,13 @@ pub fn alloc_scratch(self: *const Database) !Scratch {
 }
 
 /// The block (non-streaming) regular expression scanner.
-pub fn scan_block(self: *const Database, data: []const u8, scratch: Scratch, opts: scan.Options) !void {
-    return scan.scan_block(@ptrCast(self.ptr), data, scratch, opts);
+pub fn scan_block(self: *const Database, data: []const u8, scratch: Scratch, opts: ScanOptions) !void {
+    return runtime.scan_block(@ptrCast(self.ptr), data, scratch, opts);
 }
 
 /// The vectored regular expression scanner.
-pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: scan.Options) !void {
-    return scan.scan_vector(@ptrCast(self.ptr), data, scratch, opts);
+pub fn scan_vector(self: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: ScanOptions) !void {
+    return runtime.scan_vector(@ptrCast(self.ptr), data, scratch, opts);
 }
 
 /// Provides the size of the stream state allocated by a single stream opened against the given database.

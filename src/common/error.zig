@@ -36,9 +36,10 @@ pub const Error = error{
     UnknownError,
 };
 
+/// Utility function to check an error code.
 pub fn check(err: hs.hs_error_t) Error!void {
     switch (err) {
-        // hs.HS_SUCCESS => return Error.Success,
+        hs.HS_SUCCESS => {},
         hs.HS_INVALID => return Error.Invalid,
         hs.HS_NOMEM => return Error.NoMemory,
         hs.HS_SCAN_TERMINATED => return Error.ScanTerminated,
@@ -54,4 +55,24 @@ pub fn check(err: hs.hs_error_t) Error!void {
         hs.HS_UNKNOWN_ERROR => return Error.UnknownError,
         else => {},
     }
+}
+
+test check {
+    try check(hs.HS_SUCCESS);
+    try check(123);
+    try check(-123);
+
+    try std.testing.expectError(Error.Invalid, check(hs.HS_INVALID));
+    try std.testing.expectError(Error.NoMemory, check(hs.HS_NOMEM));
+    try std.testing.expectError(Error.ScanTerminated, check(hs.HS_SCAN_TERMINATED));
+    try std.testing.expectError(Error.CompileError, check(hs.HS_COMPILER_ERROR));
+    try std.testing.expectError(Error.DbVersionError, check(hs.HS_DB_VERSION_ERROR));
+    try std.testing.expectError(Error.DbPlatformError, check(hs.HS_DB_PLATFORM_ERROR));
+    try std.testing.expectError(Error.DbModeError, check(hs.HS_DB_MODE_ERROR));
+    try std.testing.expectError(Error.BadAlign, check(hs.HS_BAD_ALIGN));
+    try std.testing.expectError(Error.BadAlloc, check(hs.HS_BAD_ALLOC));
+    try std.testing.expectError(Error.ScratchInUse, check(hs.HS_SCRATCH_IN_USE));
+    try std.testing.expectError(Error.ArchError, check(hs.HS_ARCH_ERROR));
+    try std.testing.expectError(Error.InsufficientSpace, check(hs.HS_INSUFFICIENT_SPACE));
+    try std.testing.expectError(Error.UnknownError, check(hs.HS_UNKNOWN_ERROR));
 }

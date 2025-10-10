@@ -28,10 +28,8 @@ pub const Flags = packed struct(u32) {
     reserved: u21 = 0,
 
     pub fn parse(s: []const u8) !Flags {
-        if (std.mem.indexOfNone(u8, s, allFlagsChars)) |i| {
-            std.log.warn("invalid flag: {c}", .{s[i]});
-
-            return error.InvalidFlag;
+        if (std.mem.indexOfNone(u8, s, allChars)) |_| {
+            return error.Invalid;
         }
 
         return Flags{
@@ -49,11 +47,14 @@ pub const Flags = packed struct(u32) {
         };
     }
 
-    /// Get the value of the flags.
-    pub inline fn value(self: Flags) u32 {
-        return @bitCast(self);
+    test parse {
+        try std.testing.expectEqualDeep(Flags{}, try parse(""));
+        try std.testing.expectEqualDeep(Flags{ .dot_all = true }, try parse("s"));
+        try std.testing.expectEqualDeep(allFlags, try parse(allChars));
+        try std.testing.expectError(error.Invalid, parse("invalid"));
     }
 
+    /// Format the flags to a string.
     pub fn format(self: Flags, writer: *std.Io.Writer) !void {
         if (self.caseless) {
             try writer.printAsciiChar('i', .{});
@@ -90,6 +91,17 @@ pub const Flags = packed struct(u32) {
         }
     }
 
+    test format {
+        try std.testing.expectFmt("", "{f}", .{Flags{}});
+        try std.testing.expectFmt("s", "{f}", .{Flags{ .dot_all = true }});
+        try std.testing.expectFmt(allChars, "{f}", .{allFlags});
+    }
+
+    /// Get the value of the flags.
+    pub inline fn value(self: Flags) u32 {
+        return @bitCast(self);
+    }
+
     test value {
         try std.testing.expectEqual(1, value(Flags{
             .caseless = true,
@@ -103,21 +115,9 @@ pub const Flags = packed struct(u32) {
             .multiline = true,
         }));
     }
-
-    test parse {
-        try std.testing.expectEqualDeep(Flags{}, try parse(""));
-        try std.testing.expectEqualDeep(Flags{ .dot_all = true }, try parse("s"));
-        try std.testing.expectEqualDeep(allFlags, try parse(allFlagsChars));
-    }
-
-    test format {
-        try std.testing.expectFmt("", "{f}", .{Flags{}});
-        try std.testing.expectFmt("s", "{f}", .{Flags{ .dot_all = true }});
-        try std.testing.expectFmt(allFlagsChars, "{f}", .{allFlags});
-    }
 };
 
-const allFlagsChars = "ismHV8WPLCQ";
+const allChars = "ismHV8WPLCQ";
 
 const allFlags = Flags{
     .caseless = true,
