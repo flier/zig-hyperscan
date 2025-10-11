@@ -73,7 +73,7 @@ pub fn parse(s: []const u8) !Pattern {
 }
 
 /// Utility function providing information about a regular expression.
-pub fn expr_info(self: *const Pattern) !ExprInfo {
+pub fn exprInfo(self: *const Pattern) !ExprInfo {
     return ExprInfo.analysis(self.expr, self.flags, self.ext);
 }
 
@@ -290,9 +290,9 @@ test "round trip - format then parse" {
     }
 }
 
-test "expr_info with simple patterns" {
+test "exprInfo with simple patterns" {
     const pattern1 = Pattern.init("abc", .{});
-    const info1 = try pattern1.expr_info();
+    const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(3, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 3 }, info1.max_width);
     try std.testing.expect(!info1.unordered_matches);
@@ -300,117 +300,117 @@ test "expr_info with simple patterns" {
     try std.testing.expect(!info1.matches_only_at_eod);
 
     const pattern2 = Pattern.init("test", .{ .caseless = true });
-    const info2 = try pattern2.expr_info();
+    const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(4, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info2.max_width);
 }
 
-test "expr_info with complex patterns" {
+test "exprInfo with complex patterns" {
     const pattern1 = Pattern.init("foo\\d+", .{});
-    const info1 = try pattern1.expr_info();
+    const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(4, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info1.max_width);
 
     const pattern2 = Pattern.init(".*", .{});
-    const info2 = try pattern2.expr_info();
+    const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(0, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info2.max_width);
 }
 
-test "expr_info with flags" {
+test "exprInfo with flags" {
     const pattern1 = Pattern.init("test", .{ .multiline = true, .utf8 = true });
-    const info1 = try pattern1.expr_info();
+    const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(4, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info1.max_width);
 
     const pattern2 = Pattern.init("^test$", .{ .multiline = true });
-    const info2 = try pattern2.expr_info();
+    const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(4, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info2.max_width);
 }
 
-test "expr_info with extensions" {
+test "exprInfo with extensions" {
     const ext = ExprExt{ .min_offset = 10, .max_offset = 100 };
     const pattern = Pattern.init("test", .{}).withExt(ext);
-    const info = try pattern.expr_info();
+    const info = try pattern.exprInfo();
     try std.testing.expectEqual(4, info.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info.max_width);
 }
 
-test "expr_info edge cases" {
+test "exprInfo edge cases" {
     // Empty pattern
     const empty_pattern = Pattern.init("", .{});
-    const empty_info = try empty_pattern.expr_info();
+    const empty_info = try empty_pattern.exprInfo();
     try std.testing.expectEqual(0, empty_info.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 0 }, empty_info.max_width);
 
     // Single character
     const single_pattern = Pattern.init("a", .{});
-    const single_info = try single_pattern.expr_info();
+    const single_info = try single_pattern.exprInfo();
     try std.testing.expectEqual(1, single_info.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 1 }, single_info.max_width);
 }
 
-test "expr_info with anchors" {
+test "exprInfo with anchors" {
     const pattern1 = Pattern.init("^test$", .{});
-    const info1 = try pattern1.expr_info();
+    const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(4, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info1.max_width);
 
     const pattern2 = Pattern.init("test$", .{});
-    const info2 = try pattern2.expr_info();
+    const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(4, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info2.max_width);
 }
 
-test "expr_info with quantifiers" {
+test "exprInfo with quantifiers" {
     const pattern1 = Pattern.init("a+", .{});
-    const info1 = try pattern1.expr_info();
+    const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(1, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info1.max_width);
 
     const pattern2 = Pattern.init("a{3,5}", .{});
-    const info2 = try pattern2.expr_info();
+    const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(3, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 5 }, info2.max_width);
 
     const pattern3 = Pattern.init("a{3,}", .{});
-    const info3 = try pattern3.expr_info();
+    const info3 = try pattern3.exprInfo();
     try std.testing.expectEqual(3, info3.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info3.max_width);
 }
 
-test "expr_info with alternation" {
+test "exprInfo with alternation" {
     const pattern1 = Pattern.init("abc|def", .{});
-    const info1 = try pattern1.expr_info();
+    const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(3, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 3 }, info1.max_width);
 
     const pattern2 = Pattern.init("a|bc", .{});
-    const info2 = try pattern2.expr_info();
+    const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(1, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 2 }, info2.max_width);
 }
 
-test "expr_info with character classes" {
+test "exprInfo with character classes" {
     const pattern1 = Pattern.init("[abc]", .{});
-    const info1 = try pattern1.expr_info();
+    const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(1, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 1 }, info1.max_width);
 
     const pattern2 = Pattern.init("[a-z]+", .{});
-    const info2 = try pattern2.expr_info();
+    const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(1, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info2.max_width);
 }
 
-test "expr_info error handling" {
+test "exprInfo error handling" {
     // Test with invalid regex pattern
     const invalid_pattern = Pattern.init("[", .{});
-    try std.testing.expectError(error.CompileError, invalid_pattern.expr_info());
+    try std.testing.expectError(error.CompileError, invalid_pattern.exprInfo());
 
     const invalid_pattern2 = Pattern.init("(unclosed", .{});
-    try std.testing.expectError(error.CompileError, invalid_pattern2.expr_info());
+    try std.testing.expectError(error.CompileError, invalid_pattern2.exprInfo());
 }
 
 test "parse error handling" {

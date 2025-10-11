@@ -76,7 +76,7 @@ test realloc {
     const db = try Database.compile(&foo, .{});
     defer db.deinit();
 
-    var scratch = try db.alloc_scratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const scratch_size = try scratch.size();
@@ -95,7 +95,7 @@ test clone {
     const db = try Database.compile(&foo, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const scratch2 = try scratch.clone();
@@ -109,7 +109,7 @@ test size {
     const db = try Database.compile(&foo, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     try std.testing.expect(try scratch.size() >= 1000);

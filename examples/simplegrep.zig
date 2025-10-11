@@ -109,7 +109,7 @@ pub fn main() !void {
 
     // Compile patterns into a database
 
-    var db = try hs.Database.compile_multi(opts.patterns.items, .{
+    var db = try hs.Database.compileMulti(opts.patterns.items, .{
         .mode = .{ .stream = opts.stream, .block = !opts.stream, .som_horizon_large = opts.stream },
     });
     defer db.deinit();
@@ -123,7 +123,7 @@ pub fn main() !void {
 
     // Allocate scratch space for scanning
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     std.log.debug("Scratch size: {d} bytes", .{try scratch.size()});
@@ -153,14 +153,14 @@ fn scan_block(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.Array
         .data = data,
     };
 
-    try db.scan_block(data, scratch, .{
+    try db.scanBlock(data, scratch, .{
         .onEvent = onEvent,
         .context = @constCast(&ctx),
     });
 }
 
 fn scan_stream(f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     const ctx = Context{
         .patterns = patterns.items,
     };

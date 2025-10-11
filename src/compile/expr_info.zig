@@ -10,7 +10,7 @@ const Flags = @import("flags.zig").Flags;
 const Ext = @import("expr_ext.zig");
 
 const check = @import("../common.zig").check;
-const free_compile_error = @import("../compile.zig").free_compile_error;
+const freeCompileError = @import("../compile.zig").freeCompileError;
 
 pub const MaxLength = union(enum) {
     /// The maximum length in bytes of a match for the pattern.
@@ -53,17 +53,23 @@ pub fn analysis(expr: []const u8, flags: Flags, ext: ?Ext) !Info {
         res = hs.hs_expression_info(expr.ptr, flags.value(), &expr_info, &err);
     }
 
-    free_compile_error(@ptrCast(err));
+    freeCompileError(@ptrCast(err));
 
     try check(res);
 
-    return if (expr_info) |i| Info{
-        .min_width = i.min_width,
-        .max_width = MaxLength.init(i.max_width),
-        .unordered_matches = i.unordered_matches != 0,
-        .matches_at_eod = i.matches_at_eod != 0,
-        .matches_only_at_eod = i.matches_only_at_eod != 0,
-    } else error.UnknownError;
+    if (expr_info) |i| {
+        defer std.c.free(i);
+
+        return Info{
+            .min_width = i.min_width,
+            .max_width = MaxLength.init(i.max_width),
+            .unordered_matches = i.unordered_matches != 0,
+            .matches_at_eod = i.matches_at_eod != 0,
+            .matches_only_at_eod = i.matches_only_at_eod != 0,
+        };
+    }
+
+    return error.UnknownError;
 }
 
 // Unit tests

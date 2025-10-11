@@ -132,10 +132,10 @@ test "serialize and deserialize round trip" {
     defer deserialized_db.deinit();
 
     // Test that both databases work the same way
-    const scratch1 = try db.alloc_scratch();
+    const scratch1 = try db.allocScratch();
     defer scratch1.deinit();
 
-    const scratch2 = try deserialized_db.alloc_scratch();
+    const scratch2 = try deserialized_db.allocScratch();
     defer scratch2.deinit();
 
     var match_count1: u32 = 0;
@@ -161,8 +161,8 @@ test "serialize and deserialize round trip" {
 
     const test_data = "this is a test pattern match";
 
-    try db.scan_block(test_data, scratch1, opts1);
-    try deserialized_db.scan_block(test_data, scratch2, opts2);
+    try db.scanBlock(test_data, scratch1, opts1);
+    try deserialized_db.scanBlock(test_data, scratch2, opts2);
 
     try std.testing.expectEqual(match_count1, match_count2);
     try std.testing.expect(match_count1 > 0);
@@ -251,7 +251,7 @@ test "serialize with multiple patterns" {
         try Pattern.parse("third"),
     };
 
-    const db = try Database.compile_multi(&patterns, .{});
+    const db = try Database.compileMulti(&patterns, .{});
     defer db.deinit();
 
     const serialized = try Serialized.serialize(&db);
@@ -261,7 +261,7 @@ test "serialize with multiple patterns" {
     defer deserialized_db.deinit();
 
     // Test that the deserialized database works with multiple patterns
-    const scratch = try deserialized_db.alloc_scratch();
+    const scratch = try deserialized_db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;
@@ -274,7 +274,7 @@ test "serialize with multiple patterns" {
         .context = &match_count,
     };
 
-    try deserialized_db.scan_block("first second third", scratch, opts);
+    try deserialized_db.scanBlock("first second third", scratch, opts);
     try std.testing.expect(match_count >= 3);
 }
 
@@ -290,7 +290,7 @@ test "serialize with literal mode" {
     defer deserialized_db.deinit();
 
     // Test that literal mode is preserved
-    const scratch = try deserialized_db.alloc_scratch();
+    const scratch = try deserialized_db.allocScratch();
     defer scratch.deinit();
 
     var match_found = false;
@@ -304,12 +304,12 @@ test "serialize with literal mode" {
     };
 
     // Should match literal string
-    try deserialized_db.scan_block("literal.*test", scratch, opts);
+    try deserialized_db.scanBlock("literal.*test", scratch, opts);
     try std.testing.expect(match_found);
 
     // Should not match regex patterns
     match_found = false;
-    try deserialized_db.scan_block("literal123test", scratch, opts);
+    try deserialized_db.scanBlock("literal123test", scratch, opts);
     try std.testing.expect(!match_found);
 }
 
@@ -346,7 +346,7 @@ test "serialize with complex patterns" {
         try Pattern.parse("\\b(?:https?://|www\\.)[^\\s]+"), // URL pattern
     };
 
-    const db = try Database.compile_multi(&complex_patterns, .{});
+    const db = try Database.compileMulti(&complex_patterns, .{});
     defer db.deinit();
 
     const serialized = try Serialized.serialize(&db);
@@ -356,7 +356,7 @@ test "serialize with complex patterns" {
     defer deserialized_db.deinit();
 
     // Test that complex patterns work after serialization
-    const scratch = try deserialized_db.alloc_scratch();
+    const scratch = try deserialized_db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;
@@ -370,7 +370,7 @@ test "serialize with complex patterns" {
     };
 
     const test_data = "Contact us at test@example.com or visit https://example.com on 2024-01-01";
-    try deserialized_db.scan_block(test_data, scratch, opts);
+    try deserialized_db.scanBlock(test_data, scratch, opts);
     try std.testing.expect(match_count >= 3);
 }
 
@@ -435,7 +435,7 @@ test "serialize with single character patterns" {
     defer deserialized_db.deinit();
 
     // Test that single character patterns work
-    const scratch = try deserialized_db.alloc_scratch();
+    const scratch = try deserialized_db.allocScratch();
     defer scratch.deinit();
 
     var match_found = false;
@@ -448,6 +448,6 @@ test "serialize with single character patterns" {
         .context = &match_found,
     };
 
-    try deserialized_db.scan_block("a", scratch, opts);
+    try deserialized_db.scanBlock("a", scratch, opts);
     try std.testing.expect(match_found);
 }

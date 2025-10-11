@@ -14,8 +14,8 @@ pub const MatchEventHandler = match.EventHandler;
 const scan = @import("runtime/scan.zig");
 
 pub const ScanOptions = scan.Options;
-pub const scan_block = scan.scan_block;
-pub const scan_vector = scan.scan_vector;
+pub const scanBlock = scan.scanBlock;
+pub const scanVector = scan.scanVector;
 
 test {
     std.testing.refAllDecls(@This());

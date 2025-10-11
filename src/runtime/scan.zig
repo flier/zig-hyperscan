@@ -29,14 +29,14 @@ pub const Options = struct {
 };
 
 /// The block (non-streaming) regular expression scanner.
-pub fn scan_block(db: *const Database, data: []const u8, scratch: Scratch, opts: Options) !void {
+pub fn scanBlock(db: *const Database, data: []const u8, scratch: Scratch, opts: Options) !void {
     const ctx = match.Context.init(opts.onEvent, opts.context);
 
     return check(hs.hs_scan(@ptrCast(db.ptr), data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
 }
 
 /// The vectored regular expression scanner.
-pub fn scan_vector(db: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: Options) !void {
+pub fn scanVector(db: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: Options) !void {
     const allocator = opts.allocator orelse std.heap.c_allocator;
     var ptrs = try std.ArrayList(*const u8).initCapacity(allocator, data.len);
     var lens = try std.ArrayList(u32).initCapacity(allocator, data.len);
@@ -56,17 +56,17 @@ pub fn scan_vector(db: *const Database, data: []const std.posix.iovec_const, scr
 
 // Unit tests
 
-test scan_block {
+test scanBlock {
     const pattern = try Pattern.parse("f[o]+");
     const db = try Database.compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var to: u64 = 0;
 
-    try scan_block(&db, "hello foobar", scratch, .{
+    try scanBlock(&db, "hello foobar", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.setData(u64, evt.to);
@@ -78,17 +78,17 @@ test scan_block {
     try std.testing.expectEqual(9, to);
 }
 
-test "scan_block no matches" {
+test "scanBlock no matches" {
     const pattern = try Pattern.parse("xyz");
     const db = try Database.compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_found = false;
 
-    try scan_block(&db, "hello world", scratch, .{
+    try scanBlock(&db, "hello world", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.setData(bool, true);
@@ -100,17 +100,17 @@ test "scan_block no matches" {
     try std.testing.expect(!match_found);
 }
 
-test "scan_block empty data" {
+test "scanBlock empty data" {
     const pattern = try Pattern.parse("hello");
     const db = try Database.compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_found = false;
 
-    try scan_block(&db, "", scratch, .{
+    try scanBlock(&db, "", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.setData(bool, true);
@@ -122,18 +122,18 @@ test "scan_block empty data" {
     try std.testing.expect(!match_found);
 }
 
-test "scan_block multiple matches" {
+test "scanBlock multiple matches" {
     const pattern = try Pattern.parse("hello");
     const db = try Database.compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
     defer matches.deinit(std.testing.allocator);
 
-    try scan_block(&db, "hello world hello", scratch, .{
+    try scanBlock(&db, "hello world hello", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.data(std.ArrayList(u64)).append(std.testing.allocator, evt.to) catch |err| {
@@ -151,27 +151,27 @@ test "scan_block multiple matches" {
     try std.testing.expectEqual(@as(u64, 17), matches.items[1]); // "hello" at position 12-17
 }
 
-test "scan_block without callback" {
+test "scanBlock without callback" {
     const pattern = try Pattern.parse("f[o]+");
     const db = try Database.compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Should not crash when no callback is provided
-    try scan_block(&db, "hello foobar", scratch, .{});
+    try scanBlock(&db, "hello foobar", scratch, .{});
 }
 
-test "scan_block callback error handling" {
+test "scanBlock callback error handling" {
     const pattern = try Pattern.parse("f[o]+");
     const db = try Database.compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    try std.testing.expectError(error.ScanTerminated, scan_block(&db, "hello foobar", scratch, .{
+    try std.testing.expectError(error.ScanTerminated, scanBlock(&db, "hello foobar", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 _ = evt;
@@ -182,12 +182,12 @@ test "scan_block callback error handling" {
     }));
 }
 
-test scan_vector {
+test scanVector {
     const pattern = try Pattern.parse("f[o]+");
     const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -197,7 +197,7 @@ test scan_vector {
 
     var to: u64 = 0;
 
-    try scan_vector(&db, data[0..data.len], scratch, .{
+    try scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.setData(u64, evt.to);
@@ -209,12 +209,12 @@ test scan_vector {
     try std.testing.expectEqual(8, to);
 }
 
-test "scan_vector no matches" {
+test "scanVector no matches" {
     const pattern = try Pattern.parse("xyz");
     const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -224,7 +224,7 @@ test "scan_vector no matches" {
 
     var match_found = false;
 
-    try scan_vector(&db, data[0..data.len], scratch, .{
+    try scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.setData(bool, true);
@@ -236,19 +236,19 @@ test "scan_vector no matches" {
     try std.testing.expect(!match_found);
 }
 
-test "scan_vector empty data" {
+test "scanVector empty data" {
     const pattern = try Pattern.parse("hello");
     const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{};
 
     var match_found = false;
 
-    try scan_vector(&db, data[0..data.len], scratch, .{
+    try scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.setData(bool, true);
@@ -260,12 +260,12 @@ test "scan_vector empty data" {
     try std.testing.expect(!match_found);
 }
 
-test "scan_vector multiple matches" {
+test "scanVector multiple matches" {
     const pattern = try Pattern.parse("hello");
     const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -277,7 +277,7 @@ test "scan_vector multiple matches" {
     var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
     defer matches.deinit(std.testing.allocator);
 
-    try scan_vector(&db, data[0..data.len], scratch, .{
+    try scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 evt.data(std.ArrayList(u64)).append(std.testing.allocator, evt.to) catch |err| {
@@ -296,12 +296,12 @@ test "scan_vector multiple matches" {
     try std.testing.expectEqual(@as(u64, 17), matches.items[1]); // "hello" at position 12-17
 }
 
-test "scan_vector without callback" {
+test "scanVector without callback" {
     const pattern = try Pattern.parse("f[o]+");
     const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -310,15 +310,15 @@ test "scan_vector without callback" {
     };
 
     // Should not crash when no callback is provided
-    try scan_vector(&db, data[0..data.len], scratch, .{});
+    try scanVector(&db, data[0..data.len], scratch, .{});
 }
 
-test "scan_vector callback error handling" {
+test "scanVector callback error handling" {
     const pattern = try Pattern.parse("f[o]+");
     const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -326,7 +326,7 @@ test "scan_vector callback error handling" {
         .{ .base = "foobar", .len = 6 },
     };
 
-    try std.testing.expectError(error.ScanTerminated, scan_vector(&db, data[0..data.len], scratch, .{
+    try std.testing.expectError(error.ScanTerminated, scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
                 _ = evt;
@@ -344,12 +344,12 @@ test "scan with different pattern types" {
         const db = try Database.compile(&pattern, .{ .literal = true });
         defer db.deinit();
 
-        const scratch = try db.alloc_scratch();
+        const scratch = try db.allocScratch();
         defer scratch.deinit();
 
         var match_found = false;
 
-        try scan_block(&db, "hello world", scratch, .{
+        try scanBlock(&db, "hello world", scratch, .{
             .onEvent = struct {
                 fn handler(evt: match.Event) !void {
                     evt.setData(bool, true);
@@ -367,12 +367,12 @@ test "scan with different pattern types" {
         const db = try Database.compile(&pattern, .{});
         defer db.deinit();
 
-        const scratch = try db.alloc_scratch();
+        const scratch = try db.allocScratch();
         defer scratch.deinit();
 
         var match_found = false;
 
-        try scan_block(&db, "Contact us at test@example.com for more info", scratch, .{
+        try scanBlock(&db, "Contact us at test@example.com for more info", scratch, .{
             .onEvent = struct {
                 fn handler(evt: match.Event) !void {
                     evt.setData(bool, true);

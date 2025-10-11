@@ -74,7 +74,7 @@ pub fn copy(self: *const Stream) !Stream {
 ///
 /// The new stream will first be reset
 /// (reporting any EOD matches if a non-NULL @p onEvent callback handler is provided).
-pub fn reset_and_copy(self: *const Stream, to: *Stream, scratch: Scratch, opts: ScanOptions) !void {
+pub fn resetAndCopy(self: *const Stream, to: *Stream, scratch: Scratch, opts: ScanOptions) !void {
     const ctx = match.Context.init(opts.onEvent, opts.context);
 
     return check(hs.hs_reset_and_copy_stream(to.stream_id, self.stream_id, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
@@ -83,7 +83,7 @@ pub fn reset_and_copy(self: *const Stream, to: *Stream, scratch: Scratch, opts: 
 /// Creates a compressed representation of the provided stream in the buffer provided.
 ///
 /// This compressed representation can be converted back into a stream state
-/// by using `expand` or `reset_and_expand`.
+/// by using `expand` or `resetAndExpand`.
 pub fn compress(self: *const Stream, allocator: std.mem.Allocator) ![]u8 {
     var sz: usize = 0;
 
@@ -116,7 +116,7 @@ pub fn expand(db: *const Database, buf: []const u8) !Stream {
 /// Decompresses a compressed representation created by `compress` on top of the stream.
 ///
 /// The stream will first be reset (reporting any EOD matches if a non-NULL `onEvent` callback handler is provided).
-pub fn reset_and_expand(self: *Stream, buf: []const u8, scratch: Scratch, opts: ScanOptions) !void {
+pub fn resetAndExpand(self: *Stream, buf: []const u8, scratch: Scratch, opts: ScanOptions) !void {
     const ctx = match.Context.init(opts.onEvent, opts.context);
 
     return check(hs.hs_reset_and_expand_stream(self.stream_id, buf.ptr, @intCast(buf.len), @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
@@ -130,7 +130,7 @@ test open {
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
@@ -149,11 +149,11 @@ test scan {
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
 
     // create the variable that will store the last match offset
     var to: u64 = 0;
@@ -193,11 +193,11 @@ test close {
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
 
     // create the variable that will store the last match offset
     var to: u64 = 0;
@@ -240,11 +240,11 @@ test reset {
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
 
     // create the variable that will store the last match offset
     var to: u64 = 0;
@@ -293,11 +293,11 @@ test copy {
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
 
     // create the variable that will store the last match offset
     var to: u64 = 0;
@@ -340,7 +340,7 @@ test copy {
     try stream2.close(scratch, opts);
 }
 
-test reset_and_copy {
+test resetAndCopy {
     // parse the pattern
     const foobar = try Pattern.parse("f[o]+bar");
 
@@ -349,11 +349,11 @@ test reset_and_copy {
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
 
     // create the variable that will store the last match offset
     var to: u64 = 0;
@@ -378,7 +378,7 @@ test reset_and_copy {
     var stream2 = try stream.copy();
 
     // then copy and reset the stream, then the stream2 should have the same state as the original stream
-    try stream.reset_and_copy(&stream2, scratch, opts);
+    try stream.resetAndCopy(&stream2, scratch, opts);
 
     // scan the second part of the string
     try stream.scan("bar", scratch, opts);
@@ -406,7 +406,7 @@ test "open steam with non-streaming database" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .block = true } });
     defer db.deinit();
 
-    try std.testing.expectError(error.DbModeError, db.open_stream(.{}));
+    try std.testing.expectError(error.DbModeError, db.openStream(.{}));
 }
 
 test "scan with empty data" {
@@ -414,10 +414,10 @@ test "scan with empty data" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     var match_count: u32 = 0;
@@ -441,10 +441,10 @@ test "scan with null event handler" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Scan with null event handler - should not crash
@@ -456,10 +456,10 @@ test "close without scan" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
 
     // Close stream without scanning - should work
     try stream.close(scratch, .{});
@@ -470,10 +470,10 @@ test "reset without scan" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Reset stream without scanning - should work
@@ -487,10 +487,10 @@ test "scan with very large data" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Create a large string (1MB)
@@ -520,10 +520,10 @@ test "scan with special characters" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     var match_count: u32 = 0;
@@ -547,10 +547,10 @@ test "scan with unicode characters" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     var match_count: u32 = 0;
@@ -573,13 +573,13 @@ test "multiple scans with different patterns" {
         try Pattern.parse("hello"),
         try Pattern.parse("world"),
     };
-    const db = try Database.compile_multi(&patterns, .{ .mode = .{ .stream = true } });
+    const db = try Database.compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
@@ -611,13 +611,13 @@ test "multiple streams with same database" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Create multiple streams
-    const stream1 = try db.open_stream(.{});
-    const stream2 = try db.open_stream(.{});
-    const stream3 = try db.open_stream(.{});
+    const stream1 = try db.openStream(.{});
+    const stream2 = try db.openStream(.{});
+    const stream3 = try db.openStream(.{});
 
     var match_count1: u32 = 0;
     var match_count2: u32 = 0;
@@ -671,10 +671,10 @@ test "scan multi parts data and terminate on second match" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Track matches and termination
@@ -731,10 +731,10 @@ test "scan multi parts data and terminate on first match" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Track matches and termination
@@ -782,13 +782,13 @@ test "scan multi parts data with multiple patterns and terminate on second match
         try Pattern.parse("hello"),
         try Pattern.parse("world"),
     };
-    const db = try Database.compile_multi(&patterns, .{ .mode = .{ .stream = true } });
+    const db = try Database.compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Track matches and termination
@@ -848,11 +848,11 @@ test "compress stream" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Scan some data to change the stream state
@@ -872,11 +872,11 @@ test "compress empty stream" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream but don't scan anything
-    const stream = try db.open_stream(.{});
+    const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Compress the empty stream
@@ -893,11 +893,11 @@ test "expand stream" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, .{}) catch {};
 
     try original_stream.scan("some te", scratch, .{});
@@ -933,14 +933,14 @@ test "compress and expand with multiple patterns" {
         try Pattern.parse("foobar"),
         try Pattern.parse("he[l]+o"),
     };
-    const db = try Database.compile_multi(&patterns, .{ .mode = .{ .stream = true } });
+    const db = try Database.compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, .{}) catch {};
 
     // Verify the expanded stream works correctly
@@ -979,11 +979,11 @@ test "compress and expand round trip" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, .{}) catch {};
 
     try original_stream.scan("some te", scratch, .{});
@@ -1045,7 +1045,7 @@ test "compress and expand with large stream state" {
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_large = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;
@@ -1059,7 +1059,7 @@ test "compress and expand with large stream state" {
     };
 
     // Open a stream and scan a lot of data to create a large state
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, opts) catch {};
 
     try original_stream.scan("f", scratch, opts);
@@ -1091,13 +1091,13 @@ test "compress and expand with large stream state" {
 
 // Reset and expand tests
 
-test reset_and_expand {
+test resetAndExpand {
     // Parse a pattern for streaming
     const pattern = try Pattern.parse("test");
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;
@@ -1111,7 +1111,7 @@ test reset_and_expand {
     };
 
     // Open a stream and scan some data
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, opts) catch {};
 
     try original_stream.scan("some te", scratch, opts);
@@ -1120,32 +1120,32 @@ test reset_and_expand {
     const compressed = try original_stream.compress(std.testing.allocator);
     defer std.testing.allocator.free(compressed);
 
-    // Create a new stream for reset_and_expand
-    var target_stream = try db.open_stream(.{});
+    // Create a new stream for resetAndExpand
+    var target_stream = try db.openStream(.{});
     defer target_stream.close(scratch, opts) catch {};
 
     // Scan some data to change the target stream state
     try target_stream.scan("different data", scratch, opts);
 
     // Reset and expand the compressed stream onto the target stream
-    try target_stream.reset_and_expand(compressed, scratch, .{});
+    try target_stream.resetAndExpand(compressed, scratch, .{});
 
     // Continue scanning from where the original left off
     try target_stream.scan("st", scratch, opts);
     try std.testing.expectEqual(1, match_count); // Should find "test" in "more test"
 }
 
-test "reset_and_expand with EOD matches" {
+test "resetAndExpand with EOD matches" {
     // Parse a pattern that requires EOD (end of data) to match
     const pattern = try Pattern.parse("test$");
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan partial data
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, .{}) catch {};
 
     try original_stream.scan("test", scratch, .{});
@@ -1154,13 +1154,13 @@ test "reset_and_expand with EOD matches" {
     const compressed = try original_stream.compress(std.testing.allocator);
     defer std.testing.allocator.free(compressed);
 
-    // Create a new stream for reset_and_expand
-    var target_stream = try db.open_stream(.{});
+    // Create a new stream for resetAndExpand
+    var target_stream = try db.openStream(.{});
     defer target_stream.close(scratch, .{}) catch {};
 
     try target_stream.scan("test", scratch, .{});
 
-    // Track EOD matches during reset_and_expand
+    // Track EOD matches during resetAndExpand
     var eod_matches: u32 = 0;
     const reset_opts = ScanOptions{
         .onEvent = struct {
@@ -1172,7 +1172,7 @@ test "reset_and_expand with EOD matches" {
     };
 
     // Reset and expand - may or may not report EOD matches depending on implementation
-    try target_stream.reset_and_expand(compressed, scratch, reset_opts);
+    try target_stream.resetAndExpand(compressed, scratch, reset_opts);
     try std.testing.expectEqual(1, eod_matches);
 
     // Verify the target stream now has the same state as the original
@@ -1191,16 +1191,16 @@ test "reset_and_expand with EOD matches" {
     try std.testing.expectEqual(0, match_count); // Should not find matches since pattern requires EOD
 }
 
-test "reset_and_expand with multiple patterns" {
+test "resetAndExpand with multiple patterns" {
     // Parse multiple patterns for streaming
     const patterns = [_]Pattern{
         try Pattern.parse("hello"),
         try Pattern.parse("world"),
     };
-    const db = try Database.compile_multi(&patterns, .{ .mode = .{ .stream = true } });
+    const db = try Database.compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var matches = try std.ArrayList(u32).initCapacity(std.testing.allocator, 10);
@@ -1216,7 +1216,7 @@ test "reset_and_expand with multiple patterns" {
     };
 
     // Open a stream and scan some data
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, opts) catch {};
 
     try original_stream.scan("foobar", scratch, opts);
@@ -1225,15 +1225,15 @@ test "reset_and_expand with multiple patterns" {
     const compressed = try original_stream.compress(std.testing.allocator);
     defer std.testing.allocator.free(compressed);
 
-    // Create a new stream for reset_and_expand
-    var target_stream = try db.open_stream(.{});
+    // Create a new stream for resetAndExpand
+    var target_stream = try db.openStream(.{});
     defer target_stream.close(scratch, opts) catch {};
 
     // Scan some data to change the target stream state
     try target_stream.scan("hel", scratch, opts);
 
     // Reset and expand the compressed stream onto the target stream
-    try target_stream.reset_and_expand(compressed, scratch, opts);
+    try target_stream.resetAndExpand(compressed, scratch, opts);
 
     // Continue scanning from where the original left off
     try target_stream.scan("lo world", scratch, opts);
@@ -1241,17 +1241,17 @@ test "reset_and_expand with multiple patterns" {
     try std.testing.expectEqual(1, matches.items[0]); // Should find "world" pattern (id=1)
 }
 
-test "reset_and_expand round trip" {
+test "resetAndExpand round trip" {
     // Parse a pattern for streaming
     const pattern = try Pattern.parse("test");
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, .{}) catch {};
 
     const buf = "some test data";
@@ -1264,15 +1264,15 @@ test "reset_and_expand round trip" {
     const compressed = try original_stream.compress(std.testing.allocator);
     defer std.testing.allocator.free(compressed);
 
-    // Create a new stream for reset_and_expand
-    var target_stream = try db.open_stream(.{});
+    // Create a new stream for resetAndExpand
+    var target_stream = try db.openStream(.{});
     defer target_stream.close(scratch, .{}) catch {};
 
     // Scan some data to change the target stream state
     try target_stream.scan("different data", scratch, .{});
 
     // Reset and expand the compressed stream onto the target stream
-    try target_stream.reset_and_expand(compressed, scratch, .{});
+    try target_stream.resetAndExpand(compressed, scratch, .{});
 
     // Test that the target stream behaves identically to the original for the same input
     var original_matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
@@ -1306,31 +1306,31 @@ test "reset_and_expand round trip" {
     try std.testing.expectEqualDeep(original_matches.items, target_matches.items);
 }
 
-test "reset_and_expand with invalid data" {
+test "resetAndExpand with invalid data" {
     // Parse a pattern for streaming
     const pattern = try Pattern.parse("test");
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    // Create a stream for reset_and_expand
-    var target_stream = try db.open_stream(.{});
+    // Create a stream for resetAndExpand
+    var target_stream = try db.openStream(.{});
     defer target_stream.close(scratch, .{}) catch {};
 
-    // Try to reset_and_expand with invalid data
+    // Try to resetAndExpand with invalid data
     const invalid_data = [_]u8{ 0x00, 0x01, 0x02, 0x03 };
-    try std.testing.expectError(error.Invalid, target_stream.reset_and_expand(&invalid_data, scratch, .{}));
+    try std.testing.expectError(error.Invalid, target_stream.resetAndExpand(&invalid_data, scratch, .{}));
 }
 
-test "reset_and_expand with large stream state" {
+test "resetAndExpand with large stream state" {
     // Parse a pattern for streaming
     const pattern = try Pattern.parse("f[o]+bar");
     const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_large = true } });
     defer db.deinit();
 
-    const scratch = try db.alloc_scratch();
+    const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;
@@ -1344,7 +1344,7 @@ test "reset_and_expand with large stream state" {
     };
 
     // Open a stream and scan a lot of data to create a large state
-    const original_stream = try db.open_stream(.{});
+    const original_stream = try db.openStream(.{});
     defer original_stream.close(scratch, opts) catch {};
 
     try original_stream.scan("f", scratch, opts);
@@ -1365,15 +1365,15 @@ test "reset_and_expand with large stream state" {
     try std.testing.expect(compressed.len > 0);
     try std.testing.expect(compressed.len < buf.len); // Should be compressed
 
-    // Create a new stream for reset_and_expand
-    var target_stream = try db.open_stream(.{});
+    // Create a new stream for resetAndExpand
+    var target_stream = try db.openStream(.{});
     defer target_stream.close(scratch, opts) catch {};
 
     // Scan some data to change the target stream state
     try target_stream.scan("different data", scratch, opts);
 
     // Reset and expand the compressed stream onto the target stream
-    try target_stream.reset_and_expand(compressed, scratch, opts);
+    try target_stream.resetAndExpand(compressed, scratch, opts);
 
     // Continue scanning from where the original left off
     try target_stream.scan("bar", scratch, opts);
