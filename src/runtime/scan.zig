@@ -15,7 +15,7 @@ const check = @import("../common.zig").check;
 /// Scan options.
 pub const Options = struct {
     /// The allocator to use for the scan.
-    allocator: std.mem.Allocator = std.heap.c_allocator,
+    allocator: ?std.mem.Allocator = null,
     /// Flags modifying the behaviour of scan behaviour.
     ///
     /// This parameter is provided for future use and is unused at present.
@@ -37,15 +37,16 @@ pub fn scan_block(db: *const Database, data: []const u8, scratch: Scratch, opts:
 
 /// The vectored regular expression scanner.
 pub fn scan_vector(db: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: Options) !void {
-    var ptrs = try std.ArrayList(*const u8).initCapacity(opts.allocator, data.len);
-    var lens = try std.ArrayList(u32).initCapacity(opts.allocator, data.len);
+    const allocator = opts.allocator orelse std.heap.c_allocator;
+    var ptrs = try std.ArrayList(*const u8).initCapacity(allocator, data.len);
+    var lens = try std.ArrayList(u32).initCapacity(allocator, data.len);
 
-    defer ptrs.deinit(opts.allocator);
-    defer lens.deinit(opts.allocator);
+    defer ptrs.deinit(allocator);
+    defer lens.deinit(allocator);
 
     for (data) |buf| {
-        try ptrs.append(opts.allocator, @ptrCast(buf.base));
-        try lens.append(opts.allocator, @intCast(buf.len));
+        try ptrs.append(allocator, @ptrCast(buf.base));
+        try lens.append(allocator, @intCast(buf.len));
     }
 
     const ctx = match.Context.init(opts.onEvent, opts.context);

@@ -58,7 +58,7 @@ pub const Mode = packed struct(u32) {
 /// Compile options.
 pub const Options = struct {
     /// The allocator to use for the compile.
-    allocator: std.mem.Allocator = std.heap.c_allocator,
+    allocator: ?std.mem.Allocator = null,
     /// The mode for the database.
     mode: Mode = .{ .block = true },
     /// The target platform for the database.
@@ -93,29 +93,30 @@ pub fn compile(pattern: *const Pattern, opts: Options) !Database {
 
 /// The multiple regular expression compiler.
 pub fn compile_multi(patterns: []const Pattern, opts: Options) !Database {
-    var exprs = try std.ArrayList([*]const u8).initCapacity(opts.allocator, patterns.len);
-    var flags = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
-    var ids = try std.ArrayList(u32).initCapacity(opts.allocator, patterns.len);
-    var lens = try std.ArrayList(usize).initCapacity(opts.allocator, patterns.len);
-    var exts = try std.ArrayList(hs.hs_expr_ext_t).initCapacity(opts.allocator, patterns.len);
-    var exts_ptrs = try std.ArrayList(*const hs.hs_expr_ext_t).initCapacity(opts.allocator, patterns.len);
+    const allocator = opts.allocator orelse std.heap.c_allocator;
+    var exprs = try std.ArrayList([*]const u8).initCapacity(allocator, patterns.len);
+    var flags = try std.ArrayList(u32).initCapacity(allocator, patterns.len);
+    var ids = try std.ArrayList(u32).initCapacity(allocator, patterns.len);
+    var lens = try std.ArrayList(usize).initCapacity(allocator, patterns.len);
+    var exts = try std.ArrayList(hs.hs_expr_ext_t).initCapacity(allocator, patterns.len);
+    var exts_ptrs = try std.ArrayList(*const hs.hs_expr_ext_t).initCapacity(allocator, patterns.len);
 
-    defer exprs.deinit(opts.allocator);
-    defer flags.deinit(opts.allocator);
-    defer ids.deinit(opts.allocator);
-    defer lens.deinit(opts.allocator);
-    defer exts.deinit(opts.allocator);
-    defer exts_ptrs.deinit(opts.allocator);
+    defer exprs.deinit(allocator);
+    defer flags.deinit(allocator);
+    defer ids.deinit(allocator);
+    defer lens.deinit(allocator);
+    defer exts.deinit(allocator);
+    defer exts_ptrs.deinit(allocator);
 
     var has_exts = false;
 
     for (patterns, 0..) |pattern, i| {
-        try exprs.append(opts.allocator, pattern.expr.ptr);
-        try flags.append(opts.allocator, pattern.flags.value());
-        try ids.append(opts.allocator, pattern.id orelse @intCast(i));
-        try lens.append(opts.allocator, pattern.expr.len);
-        try exts.append(opts.allocator, if (pattern.ext) |ext| @bitCast(ext.raw()) else hs.hs_expr_ext_t{});
-        try exts_ptrs.append(opts.allocator, &exts.items[exts.items.len - 1]);
+        try exprs.append(allocator, pattern.expr.ptr);
+        try flags.append(allocator, pattern.flags.value());
+        try ids.append(allocator, pattern.id orelse @intCast(i));
+        try lens.append(allocator, pattern.expr.len);
+        try exts.append(allocator, if (pattern.ext) |ext| @bitCast(ext.raw()) else hs.hs_expr_ext_t{});
+        try exts_ptrs.append(allocator, &exts.items[exts.items.len - 1]);
 
         has_exts |= pattern.ext != null;
     }
@@ -214,7 +215,7 @@ test "Mode round trip" {
 
 test "Options default values" {
     const opts = Options{};
-    try std.testing.expectEqual(std.heap.c_allocator, opts.allocator);
+    try std.testing.expect(opts.allocator == null);
     try std.testing.expectEqual(Mode{ .block = true }, opts.mode);
     try std.testing.expect(opts.platform == null);
     try std.testing.expect(!opts.literal);
@@ -232,7 +233,8 @@ test "Options with custom values" {
         .literal = true,
     };
 
-    try std.testing.expectEqual(custom_allocator, opts.allocator);
+    try std.testing.expect(opts.allocator != null);
+    try std.testing.expectEqual(custom_allocator, opts.allocator.?);
     try std.testing.expectEqual(custom_mode, opts.mode);
     try std.testing.expect(opts.platform != null);
     try std.testing.expectEqual(custom_platform.tune, opts.platform.?.tune);
