@@ -2,13 +2,8 @@
 
 const std = @import("std");
 
-const cString = @cImport({
-    @cInclude("string.h");
-});
-
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const cString = @cImport(@cInclude("string.h"));
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 /// Utility function for identifying this release version.
 pub fn version() []const u8 {

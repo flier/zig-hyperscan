@@ -3,9 +3,7 @@
 
 const std = @import("std");
 
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 const check = @import("../common.zig").check;
 

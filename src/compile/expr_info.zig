@@ -2,9 +2,7 @@
 
 const std = @import("std");
 
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 const Flags = @import("flags.zig").Flags;
 const Ext = @import("expr_ext.zig");

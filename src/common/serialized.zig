@@ -1,12 +1,7 @@
 const std = @import("std");
 
-const cString = @cImport({
-    @cInclude("string.h");
-});
-
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const cString = @cImport(@cInclude("string.h"));
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 const check = @import("../common.zig").check;
 const Database = @import("database.zig").Database;

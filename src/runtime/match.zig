@@ -1,8 +1,6 @@
 const std = @import("std");
 
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 /// A type for event details passed to the event handler.
 pub const Event = struct {

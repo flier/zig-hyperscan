@@ -2,13 +2,8 @@
 
 const std = @import("std");
 
-const cString = @cImport({
-    @cInclude("string.h");
-});
-
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const cString = @cImport(@cInclude("string.h"));
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 const Serialized = @import("serialized.zig");
 

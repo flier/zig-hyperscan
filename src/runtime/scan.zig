@@ -1,8 +1,6 @@
 const std = @import("std");
 
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 const match = @import("match.zig");
 const Scratch = @import("scratch.zig");

@@ -2,9 +2,7 @@
 
 const std = @import("std");
 
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 /// The minimum end offset in the data stream at which this expression should match successfully.
 min_offset: ?u64 = null,

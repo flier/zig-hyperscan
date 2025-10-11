@@ -1,8 +1,6 @@
 const std = @import("std");
 
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 /// A type for errors returned by Hyperscan functions.
 pub const Error = error{

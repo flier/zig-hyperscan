@@ -2,9 +2,7 @@
 
 const std = @import("std");
 
-const hs = @cImport({
-    @cInclude("hs/hs.h");
-});
+const hs = @cImport(@cInclude("hs/hs.h"));
 
 const Database = @import("common.zig").Database;
 const MatchEvent = @import("runtime.zig").MatchEvent;
