@@ -95,6 +95,11 @@ pub fn scanVector(self: *const Database, data: []const std.posix.iovec_const, sc
     return runtime.scanVector(self, data, scratch, opts);
 }
 
+/// The streaming regular expression scanner.
+pub fn scanStream(self: *const Database, data: *std.Io.Reader, scratch: Scratch, opts: ScanOptions) !void {
+    return runtime.scanStream(self, data, scratch, opts);
+}
+
 /// Provides the size of the stream state allocated by a single stream opened against the given database.
 pub fn streamSize(self: *const Database) !usize {
     var sz: usize = 0;

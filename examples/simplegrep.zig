@@ -160,31 +160,14 @@ fn scan_block(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.Array
 }
 
 fn scan_stream(f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
-    const stream = try db.openStream(.{});
     const ctx = Context{
         .patterns = patterns.items,
     };
 
-    var buf: [4096]u8 = undefined;
-    var off: usize = 0;
-    var r = f.readerStreaming(&buf);
+    var buf: [std.heap.pageSize()]u8 = undefined;
+    var reader = f.readerStreaming(&buf);
 
-    while (!r.atEnd()) {
-        const rd = r.readStreaming(&buf) catch |err| switch (err) {
-            error.EndOfStream => break,
-            else => return err,
-        };
-        const data = buf[0..rd];
-
-        try stream.scan(data, scratch, .{
-            .onEvent = onEvent,
-            .context = @constCast(&ctx),
-        });
-
-        off += rd;
-    }
-
-    try stream.close(scratch, .{
+    try db.scanStream(&reader.interface, scratch, .{
         .onEvent = onEvent,
         .context = @constCast(&ctx),
     });

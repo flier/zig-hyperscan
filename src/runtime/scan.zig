@@ -54,6 +54,25 @@ pub fn scanVector(db: *const Database, data: []const std.posix.iovec_const, scra
     return check(hs.hs_scan_vector(@ptrCast(db.ptr), ptrs.items.ptr, lens.items.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
 }
 
+/// The streaming regular expression scanner.
+pub fn scanStream(db: *const Database, reader: *std.Io.Reader, scratch: Scratch, opts: Options) !void {
+    const stream = try db.openStream(.{});
+
+    var buf: [std.heap.pageSize()]u8 = undefined;
+
+    while (reader.readSliceShort(&buf)) |read| {
+        if (read == 0) {
+            try stream.close(scratch, opts);
+
+            break;
+        }
+
+        try stream.scan(buf[0..read], scratch, opts);
+    } else |err| {
+        return err;
+    }
+}
+
 // Unit tests
 
 test scanBlock {
@@ -383,4 +402,177 @@ test "scan with different pattern types" {
 
         try std.testing.expect(match_found);
     }
+}
+
+// ===== scanStream Unit Tests =====
+
+test scanStream {
+    const pattern = try Pattern.parse("f[o]+");
+    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    defer db.deinit();
+
+    const scratch = try db.allocScratch();
+    defer scratch.deinit();
+
+    const test_data = "hello foobar world";
+    var reader = std.Io.Reader.fixed(test_data);
+    var to: u64 = 0;
+
+    try scanStream(&db, &reader, scratch, .{
+        .onEvent = struct {
+            fn handler(evt: match.Event) !void {
+                evt.setData(u64, evt.to);
+            }
+        }.handler,
+        .context = &to,
+    });
+
+    try std.testing.expectEqual(9, to);
+}
+
+test "scanStream no matches" {
+    const pattern = try Pattern.parse("xyz");
+    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    defer db.deinit();
+
+    const scratch = try db.allocScratch();
+    defer scratch.deinit();
+
+    const test_data = "hello world";
+    var reader = std.Io.Reader.fixed(test_data);
+    var match_found = false;
+
+    try scanStream(&db, &reader, scratch, .{
+        .onEvent = struct {
+            fn handler(evt: match.Event) !void {
+                evt.setData(bool, true);
+            }
+        }.handler,
+        .context = &match_found,
+    });
+
+    try std.testing.expect(!match_found);
+}
+
+test "scanStream empty data" {
+    const pattern = try Pattern.parse("hello");
+    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    defer db.deinit();
+
+    const scratch = try db.allocScratch();
+    defer scratch.deinit();
+
+    const test_data = "";
+    var reader = std.Io.Reader.fixed(test_data);
+    var match_found = false;
+
+    try scanStream(&db, &reader, scratch, .{
+        .onEvent = struct {
+            fn handler(evt: match.Event) !void {
+                evt.setData(bool, true);
+            }
+        }.handler,
+        .context = &match_found,
+    });
+
+    try std.testing.expect(!match_found);
+}
+
+test "scanStream multiple matches" {
+    const pattern = try Pattern.parse("hello");
+    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    defer db.deinit();
+
+    const scratch = try db.allocScratch();
+    defer scratch.deinit();
+
+    const test_data = "hello world hello";
+    var reader = std.Io.Reader.fixed(test_data);
+    var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
+    defer matches.deinit(std.testing.allocator);
+
+    try scanStream(&db, &reader, scratch, .{
+        .onEvent = struct {
+            fn handler(evt: match.Event) !void {
+                evt.data(std.ArrayList(u64)).append(std.testing.allocator, evt.to) catch |err| {
+                    std.log.err("Failed to append match: {s}", .{@errorName(err)});
+                    return error.Terminate;
+                };
+            }
+        }.handler,
+        .context = &matches,
+    });
+
+    // The pattern "hello" should match twice: at position 5 and 17
+    try std.testing.expectEqualDeep(&[_]u64{ 5, 17 }, matches.items);
+}
+
+test "scanStream without callback" {
+    const pattern = try Pattern.parse("f[o]+");
+    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    defer db.deinit();
+
+    const scratch = try db.allocScratch();
+    defer scratch.deinit();
+
+    const test_data = "hello foobar world";
+    var reader = std.Io.Reader.fixed(test_data);
+
+    // Should not crash when no callback is provided
+    try scanStream(&db, &reader, scratch, .{});
+}
+
+test "scanStream callback error handling" {
+    const pattern = try Pattern.parse("f[o]+");
+    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    defer db.deinit();
+
+    const scratch = try db.allocScratch();
+    defer scratch.deinit();
+
+    const test_data = "hello foobar world";
+    var reader = std.Io.Reader.fixed(test_data);
+
+    try std.testing.expectError(error.ScanTerminated, scanStream(&db, &reader, scratch, .{
+        .onEvent = struct {
+            fn handler(evt: match.Event) !void {
+                _ = evt;
+                return error.Terminate;
+            }
+        }.handler,
+        .context = null,
+    }));
+}
+
+test "scanStream large data" {
+    const pattern = try Pattern.parse("test");
+    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    defer db.deinit();
+
+    const scratch = try db.allocScratch();
+    defer scratch.deinit();
+
+    // Create data larger than page size to test chunked reading
+    var test_data = try std.ArrayList(u8).initCapacity(std.testing.allocator, std.heap.pageSize() * 2);
+    defer test_data.deinit(std.testing.allocator);
+
+    // Fill with "hello" repeated many times, then add "test" at the end
+    for (0..(std.heap.pageSize() / 5)) |_| {
+        try test_data.appendSlice(std.testing.allocator, "hello");
+    }
+    try test_data.appendSlice(std.testing.allocator, "test");
+
+    var reader = std.Io.Reader.fixed(test_data.items);
+    var match_found = false;
+
+    try scanStream(&db, &reader, scratch, .{
+        .onEvent = struct {
+            fn handler(evt: match.Event) !void {
+                evt.setData(bool, true);
+            }
+        }.handler,
+        .context = &match_found,
+    });
+
+    try std.testing.expect(match_found);
 }

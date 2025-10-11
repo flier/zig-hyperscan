@@ -16,6 +16,7 @@ const scan = @import("runtime/scan.zig");
 pub const ScanOptions = scan.Options;
 pub const scanBlock = scan.scanBlock;
 pub const scanVector = scan.scanVector;
+pub const scanStream = scan.scanStream;
 
 test {
     std.testing.refAllDecls(@This());
