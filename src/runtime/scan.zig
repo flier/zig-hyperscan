@@ -32,7 +32,7 @@ pub const Options = struct {
 pub fn scan_block(db: *const Database, data: []const u8, scratch: Scratch, opts: Options) !void {
     const ctx = match.Context.init(opts.onEvent, opts.context);
 
-    return check(hs.hs_scan(@ptrCast(db.ptr), data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
+    return check(hs.hs_scan(@ptrCast(db.ptr), data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
 }
 
 /// The vectored regular expression scanner.
@@ -51,7 +51,7 @@ pub fn scan_vector(db: *const Database, data: []const std.posix.iovec_const, scr
 
     const ctx = match.Context.init(opts.onEvent, opts.context);
 
-    return check(hs.hs_scan_vector(@ptrCast(db.ptr), ptrs.items.ptr, lens.items.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.onEvent, @constCast(&ctx)));
+    return check(hs.hs_scan_vector(@ptrCast(db.ptr), ptrs.items.ptr, lens.items.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
 }
 
 // Unit tests

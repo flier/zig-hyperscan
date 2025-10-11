@@ -69,16 +69,16 @@ pub const EventHandler = ?*const fn (Event) Error!void;
 
 /// A context for the event handler.
 pub const Context = struct {
-    /// The trampoline function that will be invoked by the library.
-    onEvent: hs.match_event_handler = null,
+    /// The trampoline function that will be invoked by the Hyperscan library.
+    trampoline: hs.match_event_handler,
     /// The user defined event handler.
     handler: EventHandler,
     /// The user defined pointer which will be passed to the event handler.
-    context: ?*anyopaque = null,
+    context: ?*anyopaque,
 
     pub fn init(handler: EventHandler, context: ?*anyopaque) Context {
         return Context{
-            .onEvent = if (handler) |_| &onEvent else null,
+            .trampoline = if (handler) |_| &onEvent else null,
             .handler = handler,
             .context = context,
         };
