@@ -25,7 +25,7 @@ const Pattern = @This();
 
 /// Initialize a pattern with expression and flags.
 pub fn init(expr: []const u8, flags: Flags) Pattern {
-    return Pattern{
+    return .{
         .expr = expr,
         .flags = flags,
     };
@@ -33,7 +33,7 @@ pub fn init(expr: []const u8, flags: Flags) Pattern {
 
 /// Create a pattern with additional parameters.
 pub fn withExt(self: *const Pattern, ext: ExprExt) Pattern {
-    return Pattern{
+    return .{
         .expr = self.expr,
         .flags = self.flags,
         .id = self.id,
@@ -47,9 +47,9 @@ pub fn parse(s: []const u8) !Pattern {
         if (std.fmt.parseInt(u32, s[0..start], 10)) |id| {
             if (std.mem.lastIndexOfScalar(u8, s, '/')) |end| {
                 if (start + 1 < end) {
-                    return Pattern{
+                    return .{
                         .expr = s[start + 2 .. end],
-                        .flags = try Flags.parse(s[end + 1 ..]),
+                        .flags = try .parse(s[end + 1 ..]),
                         .id = id,
                     };
                 }
@@ -59,22 +59,22 @@ pub fn parse(s: []const u8) !Pattern {
 
     if (std.mem.startsWith(u8, s, "/") & std.mem.containsAtLeastScalar(u8, s, 2, '/')) {
         if (std.mem.lastIndexOfScalar(u8, s, '/')) |end| {
-            return Pattern{
+            return .{
                 .expr = s[1..end],
-                .flags = try Flags.parse(s[end + 1 ..]),
+                .flags = try .parse(s[end + 1 ..]),
                 .id = null,
             };
         }
     }
 
-    return Pattern{
+    return .{
         .expr = s,
     };
 }
 
 /// Utility function providing information about a regular expression.
 pub fn exprInfo(self: *const Pattern) !ExprInfo {
-    return ExprInfo.analysis(self.expr, self.flags, self.ext);
+    return .analysis(self.expr, self.flags, self.ext);
 }
 
 /// Format a pattern to a string.
@@ -123,14 +123,14 @@ test format {
 // Additional comprehensive tests
 
 test "init with various flags" {
-    const pattern1 = Pattern.init("test", .{ .caseless = true });
+    const pattern1: Pattern = .init("test", .{ .caseless = true });
     try std.testing.expectEqualStrings("test", pattern1.expr);
     try std.testing.expect(pattern1.flags.caseless);
     try std.testing.expect(!pattern1.flags.dot_all);
     try std.testing.expect(pattern1.id == null);
     try std.testing.expect(pattern1.ext == null);
 
-    const pattern2 = Pattern.init("regex", .{ .multiline = true, .utf8 = true });
+    const pattern2: Pattern = .init("regex", .{ .multiline = true, .utf8 = true });
     try std.testing.expectEqualStrings("regex", pattern2.expr);
     try std.testing.expect(pattern2.flags.multiline);
     try std.testing.expect(pattern2.flags.utf8);
@@ -185,7 +185,7 @@ test "parse edge cases - malformed patterns" {
 }
 
 test "parse with complex flags" {
-    const pattern = try Pattern.parse("/test/ismHV8WPLCQ");
+    const pattern: Pattern = try .parse("/test/ismHV8WPLCQ");
     try std.testing.expectEqualStrings("test", pattern.expr);
     try std.testing.expect(pattern.flags.caseless);
     try std.testing.expect(pattern.flags.dot_all);
@@ -201,7 +201,7 @@ test "parse with complex flags" {
 }
 
 test "parse with ID and complex flags" {
-    const pattern = try Pattern.parse("42:/complex.*pattern/ism");
+    const pattern: Pattern = try .parse("42:/complex.*pattern/ism");
     try std.testing.expectEqualStrings("complex.*pattern", pattern.expr);
     try std.testing.expectEqual(42, pattern.id.?);
     try std.testing.expect(pattern.flags.caseless);
@@ -262,36 +262,36 @@ test "round trip - parse then format" {
     };
 
     for (test_cases) |input| {
-        const parsed = try Pattern.parse(input);
+        const parsed: Pattern = try .parse(input);
         const formatted = try std.fmt.allocPrint(std.testing.allocator, "{f}", .{parsed});
         defer std.testing.allocator.free(formatted);
 
         // Parse the formatted result and compare
-        const reparsed = try Pattern.parse(formatted);
+        const reparsed: Pattern = try .parse(formatted);
         try std.testing.expectEqualDeep(parsed, reparsed);
     }
 }
 
 test "round trip - format then parse" {
     const test_patterns = [_]Pattern{
-        Pattern.init("test", .{}),
-        Pattern.init("test", .{ .caseless = true }),
-        Pattern.init("test", .{ .dot_all = true, .multiline = true }),
-        Pattern{ .expr = "test", .id = 42 },
-        Pattern{ .expr = "test", .id = 0, .flags = .{ .utf8 = true } },
-        Pattern{ .expr = "complex.*pattern", .id = 999, .flags = .{ .caseless = true, .dot_all = true, .multiline = true } },
+        .init("test", .{}),
+        .init("test", .{ .caseless = true }),
+        .init("test", .{ .dot_all = true, .multiline = true }),
+        .{ .expr = "test", .id = 42 },
+        .{ .expr = "test", .id = 0, .flags = .{ .utf8 = true } },
+        .{ .expr = "complex.*pattern", .id = 999, .flags = .{ .caseless = true, .dot_all = true, .multiline = true } },
     };
 
     for (test_patterns) |input_pattern| {
         const formatted = try std.fmt.allocPrint(std.testing.allocator, "{f}", .{input_pattern});
         defer std.testing.allocator.free(formatted);
-        const parsed = try Pattern.parse(formatted);
+        const parsed: Pattern = try .parse(formatted);
         try std.testing.expectEqualDeep(input_pattern, parsed);
     }
 }
 
 test "exprInfo with simple patterns" {
-    const pattern1 = Pattern.init("abc", .{});
+    const pattern1: Pattern = .init("abc", .{});
     const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(3, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 3 }, info1.max_width);
@@ -299,31 +299,31 @@ test "exprInfo with simple patterns" {
     try std.testing.expect(!info1.matches_at_eod);
     try std.testing.expect(!info1.matches_only_at_eod);
 
-    const pattern2 = Pattern.init("test", .{ .caseless = true });
+    const pattern2: Pattern = .init("test", .{ .caseless = true });
     const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(4, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info2.max_width);
 }
 
 test "exprInfo with complex patterns" {
-    const pattern1 = Pattern.init("foo\\d+", .{});
+    const pattern1: Pattern = .init("foo\\d+", .{});
     const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(4, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info1.max_width);
 
-    const pattern2 = Pattern.init(".*", .{});
+    const pattern2: Pattern = .init(".*", .{});
     const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(0, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info2.max_width);
 }
 
 test "exprInfo with flags" {
-    const pattern1 = Pattern.init("test", .{ .multiline = true, .utf8 = true });
+    const pattern1: Pattern = .init("test", .{ .multiline = true, .utf8 = true });
     const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(4, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info1.max_width);
 
-    const pattern2 = Pattern.init("^test$", .{ .multiline = true });
+    const pattern2: Pattern = .init("^test$", .{ .multiline = true });
     const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(4, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info2.max_width);
@@ -339,66 +339,66 @@ test "exprInfo with extensions" {
 
 test "exprInfo edge cases" {
     // Empty pattern
-    const empty_pattern = Pattern.init("", .{});
+    const empty_pattern: Pattern = .init("", .{});
     const empty_info = try empty_pattern.exprInfo();
     try std.testing.expectEqual(0, empty_info.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 0 }, empty_info.max_width);
 
     // Single character
-    const single_pattern = Pattern.init("a", .{});
+    const single_pattern: Pattern = .init("a", .{});
     const single_info = try single_pattern.exprInfo();
     try std.testing.expectEqual(1, single_info.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 1 }, single_info.max_width);
 }
 
 test "exprInfo with anchors" {
-    const pattern1 = Pattern.init("^test$", .{});
+    const pattern1: Pattern = .init("^test$", .{});
     const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(4, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info1.max_width);
 
-    const pattern2 = Pattern.init("test$", .{});
+    const pattern2: Pattern = .init("test$", .{});
     const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(4, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 4 }, info2.max_width);
 }
 
 test "exprInfo with quantifiers" {
-    const pattern1 = Pattern.init("a+", .{});
+    const pattern1: Pattern = .init("a+", .{});
     const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(1, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info1.max_width);
 
-    const pattern2 = Pattern.init("a{3,5}", .{});
+    const pattern2: Pattern = .init("a{3,5}", .{});
     const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(3, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 5 }, info2.max_width);
 
-    const pattern3 = Pattern.init("a{3,}", .{});
+    const pattern3: Pattern = .init("a{3,}", .{});
     const info3 = try pattern3.exprInfo();
     try std.testing.expectEqual(3, info3.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info3.max_width);
 }
 
 test "exprInfo with alternation" {
-    const pattern1 = Pattern.init("abc|def", .{});
+    const pattern1: Pattern = .init("abc|def", .{});
     const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(3, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 3 }, info1.max_width);
 
-    const pattern2 = Pattern.init("a|bc", .{});
+    const pattern2: Pattern = .init("a|bc", .{});
     const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(1, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 2 }, info2.max_width);
 }
 
 test "exprInfo with character classes" {
-    const pattern1 = Pattern.init("[abc]", .{});
+    const pattern1: Pattern = .init("[abc]", .{});
     const info1 = try pattern1.exprInfo();
     try std.testing.expectEqual(1, info1.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength{ .value = 1 }, info1.max_width);
 
-    const pattern2 = Pattern.init("[a-z]+", .{});
+    const pattern2: Pattern = .init("[a-z]+", .{});
     const info2 = try pattern2.exprInfo();
     try std.testing.expectEqual(1, info2.min_width);
     try std.testing.expectEqual(ExprInfo.MaxLength.unbounded, info2.max_width);
@@ -406,10 +406,10 @@ test "exprInfo with character classes" {
 
 test "exprInfo error handling" {
     // Test with invalid regex pattern
-    const invalid_pattern = Pattern.init("[", .{});
+    const invalid_pattern: Pattern = .init("[", .{});
     try std.testing.expectError(error.CompileError, invalid_pattern.exprInfo());
 
-    const invalid_pattern2 = Pattern.init("(unclosed", .{});
+    const invalid_pattern2: Pattern = .init("(unclosed", .{});
     try std.testing.expectError(error.CompileError, invalid_pattern2.exprInfo());
 }
 
@@ -444,19 +444,19 @@ test "parse with very long patterns" {
     defer std.testing.allocator.free(long_expr);
     @memset(long_expr, 'a');
 
-    const long_pattern = try Pattern.parse(long_expr);
+    const long_pattern: Pattern = try .parse(long_expr);
     try std.testing.expectEqualStrings(long_expr, long_pattern.expr);
     try std.testing.expectEqual(0, long_pattern.flags.value());
     try std.testing.expect(long_pattern.id == null);
 }
 
 test "parse with unicode characters" {
-    const unicode_pattern = try Pattern.parse("/测试/is");
+    const unicode_pattern: Pattern = try .parse("/测试/is");
     try std.testing.expectEqualStrings("测试", unicode_pattern.expr);
     try std.testing.expect(unicode_pattern.flags.caseless);
     try std.testing.expect(unicode_pattern.flags.dot_all);
 
-    const unicode_with_id = try Pattern.parse("42:/测试/is");
+    const unicode_with_id: Pattern = try .parse("42:/测试/is");
     try std.testing.expectEqualStrings("测试", unicode_with_id.expr);
     try std.testing.expectEqual(42, unicode_with_id.id.?);
     try std.testing.expect(unicode_with_id.flags.caseless);
@@ -464,46 +464,46 @@ test "parse with unicode characters" {
 }
 
 test "parse with special regex characters" {
-    const special_chars = try Pattern.parse("/[a-z]+\\d*/is");
+    const special_chars: Pattern = try .parse("/[a-z]+\\d*/is");
     try std.testing.expectEqualStrings("[a-z]+\\d*", special_chars.expr);
     try std.testing.expect(special_chars.flags.caseless);
     try std.testing.expect(special_chars.flags.dot_all);
 
-    const anchors = try Pattern.parse("/^test$/m");
+    const anchors: Pattern = try .parse("/^test$/m");
     try std.testing.expectEqualStrings("^test$", anchors.expr);
     try std.testing.expect(anchors.flags.multiline);
     try std.testing.expect(!anchors.flags.caseless);
 }
 
 test "parse with empty flags" {
-    const empty_flags = try Pattern.parse("/test/");
+    const empty_flags: Pattern = try .parse("/test/");
     try std.testing.expectEqualStrings("test", empty_flags.expr);
     try std.testing.expectEqual(0, empty_flags.flags.value());
 
-    const empty_flags_with_id = try Pattern.parse("42:/test/");
+    const empty_flags_with_id: Pattern = try .parse("42:/test/");
     try std.testing.expectEqualStrings("test", empty_flags_with_id.expr);
     try std.testing.expectEqual(42, empty_flags_with_id.id.?);
     try std.testing.expectEqual(0, empty_flags_with_id.flags.value());
 }
 
 test "parse with maximum ID values" {
-    const max_id = try Pattern.parse("4294967295:/test/");
+    const max_id: Pattern = try .parse("4294967295:/test/");
     try std.testing.expectEqualStrings("test", max_id.expr);
     try std.testing.expectEqual(4294967295, max_id.id.?);
 
-    const zero_id = try Pattern.parse("0:/test/");
+    const zero_id: Pattern = try .parse("0:/test/");
     try std.testing.expectEqualStrings("test", zero_id.expr);
     try std.testing.expectEqual(0, zero_id.id.?);
 }
 
 test "format with special characters in expression" {
-    const special_pattern = Pattern.init("[a-z]+\\d*", .{ .caseless = true });
+    const special_pattern: Pattern = .init("[a-z]+\\d*", .{ .caseless = true });
     try std.testing.expectFmt("/[a-z]+\\d*/i", "{f}", .{special_pattern});
 
-    const unicode_pattern = Pattern.init("测试", .{ .dot_all = true });
+    const unicode_pattern: Pattern = .init("测试", .{ .dot_all = true });
     try std.testing.expectFmt("/测试/s", "{f}", .{unicode_pattern});
 
-    const anchors_pattern = Pattern.init("^test$", .{ .multiline = true });
+    const anchors_pattern: Pattern = .init("^test$", .{ .multiline = true });
     try std.testing.expectFmt("/^test$/m", "{f}", .{anchors_pattern});
 }
 
@@ -512,7 +512,7 @@ test "format with very long expressions" {
     defer std.testing.allocator.free(long_expr);
     @memset(long_expr, 'a');
 
-    const long_pattern = Pattern.init(long_expr, .{ .caseless = true });
+    const long_pattern: Pattern = .init(long_expr, .{ .caseless = true });
     const formatted = try std.fmt.allocPrint(std.testing.allocator, "{f}", .{long_pattern});
     defer std.testing.allocator.free(formatted);
 
@@ -536,7 +536,7 @@ test "format with all possible flag combinations" {
         .quiet = true,
     };
 
-    const pattern = Pattern{ .expr = "test", .id = 42, .flags = all_flags };
+    const pattern: Pattern = .{ .expr = "test", .id = 42, .flags = all_flags };
     try std.testing.expectFmt("42:/test/ismHV8WPLCQ", "{f}", .{pattern});
 }
 
@@ -558,7 +558,7 @@ test "memory safety - no leaks" {
     };
 
     for (test_cases) |input| {
-        const parsed = try Pattern.parse(input);
+        const parsed: Pattern = try .parse(input);
         const formatted = try std.fmt.allocPrint(std.testing.allocator, "{f}", .{parsed});
         defer std.testing.allocator.free(formatted);
 
@@ -569,10 +569,10 @@ test "memory safety - no leaks" {
 }
 
 test "pattern equality and comparison" {
-    const pattern1 = Pattern.init("test", .{ .caseless = true });
-    const pattern2 = Pattern.init("test", .{ .caseless = true });
-    const pattern3 = Pattern.init("test", .{ .dot_all = true });
-    const pattern4 = Pattern.init("different", .{ .caseless = true });
+    const pattern1: Pattern = .init("test", .{ .caseless = true });
+    const pattern2: Pattern = .init("test", .{ .caseless = true });
+    const pattern3: Pattern = .init("test", .{ .dot_all = true });
+    const pattern4: Pattern = .init("different", .{ .caseless = true });
 
     // Test that identical patterns are equal
     try std.testing.expectEqualDeep(pattern1, pattern2);
@@ -585,7 +585,7 @@ test "pattern equality and comparison" {
 }
 
 test "pattern with extensions equality" {
-    const base_pattern = Pattern.init("test", .{ .caseless = true });
+    const base_pattern: Pattern = .init("test", .{ .caseless = true });
     const pattern1 = base_pattern.withExt(.{ .min_offset = 10, .max_offset = 100 });
     const pattern2 = base_pattern.withExt(.{ .min_offset = 10, .max_offset = 100 });
     const pattern3 = base_pattern.withExt(.{ .min_offset = 20, .max_offset = 100 });

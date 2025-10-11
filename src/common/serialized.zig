@@ -20,7 +20,7 @@ owned: bool = false,
 const Serialized = @This();
 
 pub fn init(buf: []u8) Serialized {
-    return Serialized{
+    return .{
         .buf = buf,
     };
 }
@@ -38,7 +38,7 @@ pub fn serialize(db: *const Database) !Serialized {
 
     try check(hs.hs_serialize_database(@ptrCast(db.ptr), @ptrCast(&buf), &sz));
 
-    return if (buf) |ptr| Serialized{
+    return if (buf) |ptr| .{
         .buf = @constCast(@as([*]const u8, @ptrCast(ptr))[0..sz]),
         .owned = true,
     } else error.UnknownError;
@@ -50,7 +50,7 @@ pub fn deserialize(self: *const Serialized) !Database {
 
     try check(hs.hs_deserialize_database(self.buf.ptr, self.buf.len, &db));
 
-    return if (db) |ptr| Database{
+    return if (db) |ptr| .{
         .ptr = @ptrCast(ptr),
     } else error.UnknownError;
 }
@@ -81,18 +81,18 @@ pub fn databaseInfo(self: *const Serialized, allocator: std.mem.Allocator) ![]co
 
 test init {
     var test_buf = [_]u8{ 1, 2, 3, 4, 5 };
-    const serialized = Serialized.init(&test_buf);
+    const serialized: Serialized = .init(&test_buf);
 
     try std.testing.expectEqualSlices(u8, &test_buf, serialized.buf);
     try std.testing.expect(!serialized.owned);
 }
 
 test serialize {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     try std.testing.expect(serialized.buf.len > 0);
@@ -100,11 +100,11 @@ test serialize {
 }
 
 test deserialize {
-    const pattern = try Pattern.parse("world");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("world");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const deserialized_db = try serialized.deserialize();
@@ -119,12 +119,12 @@ test deserialize {
 }
 
 test "serialize and deserialize round trip" {
-    const pattern = try Pattern.parse("test.*pattern");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("test.*pattern");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     // Serialize the database
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     // Deserialize it back
@@ -169,11 +169,11 @@ test "serialize and deserialize round trip" {
 }
 
 test databaseSize {
-    const pattern = try Pattern.parse("size.*test");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("size.*test");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const size = try serialized.databaseSize();
@@ -183,11 +183,11 @@ test databaseSize {
 }
 
 test databaseInfo {
-    const pattern = try Pattern.parse("info.*test");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("info.*test");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const info = try serialized.databaseInfo(std.testing.allocator);
@@ -199,14 +199,14 @@ test databaseInfo {
 }
 
 test "serialize with different modes" {
-    const pattern = try Pattern.parse("mode.*test");
+    const pattern: Pattern = try .parse("mode.*test");
 
     // Test block mode
     {
-        const db = try Database.compile(&pattern, .{ .mode = .{ .block = true } });
+        const db: Database = try .compile(&pattern, .{ .mode = .{ .block = true } });
         defer db.deinit();
 
-        const serialized = try Serialized.serialize(&db);
+        const serialized: Serialized = try .serialize(&db);
         defer serialized.deinit();
 
         const deserialized_db = try serialized.deserialize();
@@ -217,10 +217,10 @@ test "serialize with different modes" {
 
     // Test stream mode
     {
-        const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+        const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
         defer db.deinit();
 
-        const serialized = try Serialized.serialize(&db);
+        const serialized: Serialized = try .serialize(&db);
         defer serialized.deinit();
 
         const deserialized_db = try serialized.deserialize();
@@ -231,10 +231,10 @@ test "serialize with different modes" {
 
     // Test vectored mode
     {
-        const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+        const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
         defer db.deinit();
 
-        const serialized = try Serialized.serialize(&db);
+        const serialized: Serialized = try .serialize(&db);
         defer serialized.deinit();
 
         const deserialized_db = try serialized.deserialize();
@@ -246,15 +246,15 @@ test "serialize with different modes" {
 
 test "serialize with multiple patterns" {
     const patterns = [_]Pattern{
-        try Pattern.parse("first"),
-        try Pattern.parse("second"),
-        try Pattern.parse("third"),
+        try .parse("first"),
+        try .parse("second"),
+        try .parse("third"),
     };
 
-    const db = try Database.compileMulti(&patterns, .{});
+    const db: Database = try .compileMulti(&patterns, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const deserialized_db = try serialized.deserialize();
@@ -279,11 +279,11 @@ test "serialize with multiple patterns" {
 }
 
 test "serialize with literal mode" {
-    const pattern = try Pattern.parse("literal.*test");
-    const db = try Database.compile(&pattern, .{ .literal = true });
+    const pattern: Pattern = try .parse("literal.*test");
+    const db: Database = try .compile(&pattern, .{ .literal = true });
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const deserialized_db = try serialized.deserialize();
@@ -317,7 +317,7 @@ test "serialize error handling" {
     // Test with invalid pattern database (this should not happen in practice)
     // but we can test the error handling path
     var invalid_buf = [_]u8{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    const serialized = Serialized.init(&invalid_buf);
+    const serialized: Serialized = .init(&invalid_buf);
 
     // This should fail when trying to deserialize invalid data
     try std.testing.expectError(error.Invalid, serialized.deserialize());
@@ -325,7 +325,7 @@ test "serialize error handling" {
 
 test "databaseSize with invalid data" {
     var invalid_buf = [_]u8{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    const serialized = Serialized.init(&invalid_buf);
+    const serialized: Serialized = .init(&invalid_buf);
 
     // This should fail when trying to get size of invalid data
     try std.testing.expectError(error.Invalid, serialized.databaseSize());
@@ -333,7 +333,7 @@ test "databaseSize with invalid data" {
 
 test "databaseInfo with invalid data" {
     var invalid_buf = [_]u8{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    const serialized = Serialized.init(&invalid_buf);
+    const serialized: Serialized = .init(&invalid_buf);
 
     // This should fail when trying to get info of invalid data
     try std.testing.expectError(error.Invalid, serialized.databaseInfo(std.testing.allocator));
@@ -341,15 +341,15 @@ test "databaseInfo with invalid data" {
 
 test "serialize with complex patterns" {
     const complex_patterns = [_]Pattern{
-        try Pattern.parse("\\d{4}-\\d{2}-\\d{2}"), // Date pattern
-        try Pattern.parse("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"), // Email pattern
-        try Pattern.parse("\\b(?:https?://|www\\.)[^\\s]+"), // URL pattern
+        try .parse("\\d{4}-\\d{2}-\\d{2}"), // Date pattern
+        try .parse("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"), // Email pattern
+        try .parse("\\b(?:https?://|www\\.)[^\\s]+"), // URL pattern
     };
 
-    const db = try Database.compileMulti(&complex_patterns, .{});
+    const db: Database = try .compileMulti(&complex_patterns, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const deserialized_db = try serialized.deserialize();
@@ -375,14 +375,14 @@ test "serialize with complex patterns" {
 }
 
 test "serialize with flags" {
-    const pattern = try Pattern.parse("test.*pattern");
-    const db = try Database.compile(&pattern, .{
+    const pattern: Pattern = try .parse("test.*pattern");
+    const db: Database = try .compile(&pattern, .{
         .mode = .{ .stream = true },
         .literal = true,
     });
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const deserialized_db = try serialized.deserialize();
@@ -393,13 +393,13 @@ test "serialize with flags" {
 
 test "serialize memory safety" {
     // Test that serialization doesn't leak memory
-    const pattern = try Pattern.parse("memory.*test");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("memory.*test");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     // Serialize and deserialize multiple times
     for (0..10) |_| {
-        const serialized = try Serialized.serialize(&db);
+        const serialized: Serialized = try .serialize(&db);
         defer serialized.deinit();
 
         const deserialized_db = try serialized.deserialize();
@@ -410,11 +410,11 @@ test "serialize memory safety" {
 }
 
 test "serialize with empty patterns" {
-    const empty_pattern = Pattern.init("", .{ .allow_empty = true });
-    const db = try Database.compile(&empty_pattern, .{});
+    const empty_pattern: Pattern = .init("", .{ .allow_empty = true });
+    const db: Database = try .compile(&empty_pattern, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const deserialized_db = try serialized.deserialize();
@@ -424,11 +424,11 @@ test "serialize with empty patterns" {
 }
 
 test "serialize with single character patterns" {
-    const single_char_pattern = try Pattern.parse("a");
-    const db = try Database.compile(&single_char_pattern, .{});
+    const single_char_pattern: Pattern = try .parse("a");
+    const db: Database = try .compile(&single_char_pattern, .{});
     defer db.deinit();
 
-    const serialized = try Serialized.serialize(&db);
+    const serialized: Serialized = try .serialize(&db);
     defer serialized.deinit();
 
     const deserialized_db = try serialized.deserialize();

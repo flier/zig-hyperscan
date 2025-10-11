@@ -61,7 +61,7 @@ pub fn populate() !Platform {
 
     try check(hs.hs_populate_platform(&platform));
 
-    return Platform{
+    return .{
         .tune = @enumFromInt(platform.tune),
         .cpu_features = if (platform.cpu_features != 0) @enumFromInt(platform.cpu_features) else null,
     };
@@ -69,7 +69,7 @@ pub fn populate() !Platform {
 
 /// Utility function to convert the platform to a C type.
 pub inline fn raw(self: *const Platform) hs.hs_platform_info_t {
-    return hs.hs_platform_info_t{
+    return .{
         .tune = @intFromEnum(self.tune),
         .cpu_features = if (self.cpu_features) |cpu_features| @intFromEnum(cpu_features) else 0,
         .reserved1 = 0,

@@ -60,9 +60,9 @@ pub fn analysis(expr: []const u8, flags: Flags, ext: ?Ext) !Info {
     if (expr_info) |i| {
         defer std.c.free(i);
 
-        return Info{
+        return .{
             .min_width = i.min_width,
-            .max_width = MaxLength.init(i.max_width),
+            .max_width = .init(i.max_width),
             .unordered_matches = i.unordered_matches != 0,
             .matches_at_eod = i.matches_at_eod != 0,
             .matches_only_at_eod = i.matches_only_at_eod != 0,

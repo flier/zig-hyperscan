@@ -32,7 +32,7 @@ pub const Flags = packed struct(u32) {
             return error.Invalid;
         }
 
-        return Flags{
+        return .{
             .caseless = std.mem.containsAtLeastScalar(u8, s, 1, 'i'),
             .dot_all = std.mem.containsAtLeastScalar(u8, s, 1, 's'),
             .multiline = std.mem.containsAtLeastScalar(u8, s, 1, 'm'),

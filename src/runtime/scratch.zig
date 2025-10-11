@@ -21,7 +21,7 @@ pub fn alloc(db: *const Database) !Scratch {
 
     try check(hs.hs_alloc_scratch(@ptrCast(db.ptr), &scratch));
 
-    return if (scratch) |s| Scratch{
+    return if (scratch) |s| .{
         .ptr = s,
     } else error.UnknownError;
 }
@@ -37,7 +37,7 @@ pub fn clone(self: *const Scratch) !Scratch {
 
     try check(hs.hs_clone_scratch(self.ptr, &scratch));
 
-    return if (scratch) |ptr| Scratch{
+    return if (scratch) |ptr| .{
         .ptr = ptr,
     } else error.UnknownError;
 }
@@ -61,8 +61,8 @@ pub fn deinit(self: *const Scratch) void {
 // Unit tests
 
 test alloc {
-    const pattern = try Pattern.parse("foo");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("foo");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try alloc(&db);
@@ -72,8 +72,8 @@ test alloc {
 }
 
 test realloc {
-    const foo = try Pattern.parse("foo");
-    const db = try Database.compile(&foo, .{});
+    const foo: Pattern = try .parse("foo");
+    const db: Database = try .compile(&foo, .{});
     defer db.deinit();
 
     var scratch = try db.allocScratch();
@@ -81,8 +81,8 @@ test realloc {
 
     const scratch_size = try scratch.size();
 
-    const foobar = try Pattern.parse("foobar");
-    const db2 = try Database.compile(&foobar, .{});
+    const foobar: Pattern = try .parse("foobar");
+    const db2: Database = try .compile(&foobar, .{});
     defer db2.deinit();
 
     try scratch.realloc(&db2);
@@ -91,8 +91,8 @@ test realloc {
 }
 
 test clone {
-    const foo = try Pattern.parse("foo");
-    const db = try Database.compile(&foo, .{});
+    const foo: Pattern = try .parse("foo");
+    const db: Database = try .compile(&foo, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -105,8 +105,8 @@ test clone {
 }
 
 test size {
-    const foo = try Pattern.parse("foo");
-    const db = try Database.compile(&foo, .{});
+    const foo: Pattern = try .parse("foo");
+    const db: Database = try .compile(&foo, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();

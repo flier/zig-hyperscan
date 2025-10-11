@@ -31,14 +31,14 @@ pub const Database = @This();
 ptr: *const hs.hs_database_t,
 
 pub fn init(db: *const hs.hs_database_t) Database {
-    return Database{
+    return .{
         .ptr = db,
     };
 }
 
 /// Serialize a pattern database to a stream of bytes.
 pub fn serialize(self: *const Database) !Serialized {
-    return Serialized.serialize(self);
+    return .serialize(self);
 }
 
 /// The basic regular expression compiler.
@@ -82,7 +82,7 @@ pub fn size(self: *const Database) !usize {
 
 /// Allocate a "scratch" space for use by Hyperscan.
 pub fn allocScratch(self: *const Database) !Scratch {
-    return Scratch.alloc(self);
+    return .alloc(self);
 }
 
 /// The block (non-streaming) regular expression scanner.
@@ -111,26 +111,25 @@ pub fn streamSize(self: *const Database) !usize {
 
 /// Open and initialise a stream.
 pub fn openStream(self: *const Database, opts: Stream.OpenOptions) !Stream {
-    return Stream.open(self, opts);
+    return .open(self, opts);
 }
 
 // ===== Unit Tests =====
 
 test compile {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     try std.testing.expect(try db.size() > 0);
 }
 
 test "compile with custom options" {
-    const pattern = try Pattern.parse("world");
-    const opts = CompileOptions{
+    const pattern: Pattern = try .parse("world");
+    const db: Database = try .compile(&pattern, .{
         .mode = .{ .stream = true },
         .literal = true,
-    };
-    const db = try Database.compile(&pattern, opts);
+    });
     defer db.deinit();
 
     try std.testing.expect(try db.size() > 0);
@@ -138,10 +137,10 @@ test "compile with custom options" {
 
 test compileMulti {
     const patterns = [_]Pattern{
-        try Pattern.parse("hello"),
-        try Pattern.parse("world"),
+        try .parse("hello"),
+        try .parse("world"),
     };
-    const db = try Database.compileMulti(&patterns, .{
+    const db: Database = try .compileMulti(&patterns, .{
         .mode = .{ .vectored = true },
         .literal = true,
     });
@@ -151,8 +150,8 @@ test compileMulti {
 }
 
 test info {
-    const pattern = try Pattern.parse("test");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("test");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const db_info = try db.info(std.testing.allocator);
@@ -163,8 +162,8 @@ test info {
 }
 
 test size {
-    const pattern = try Pattern.parse("test");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("test");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const db_size = try db.size();
@@ -173,8 +172,8 @@ test size {
 }
 
 test streamSize {
-    const pattern = try Pattern.parse("test");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("test");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const stream_sz = try db.streamSize();
@@ -183,8 +182,8 @@ test streamSize {
 }
 
 test openStream {
-    const pattern = try Pattern.parse("test");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("test");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -196,8 +195,8 @@ test openStream {
 }
 
 test allocScratch {
-    const pattern = try Pattern.parse("foo");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("foo");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -207,8 +206,8 @@ test allocScratch {
 }
 
 test scanBlock {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -231,8 +230,8 @@ test scanBlock {
 }
 
 test scanVector {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -261,7 +260,7 @@ test scanVector {
 
 test "compile error handling" {
     // Test with invalid pattern
-    const invalid_pattern = try Pattern.parse("(");
+    const invalid_pattern: Pattern = try .parse("(");
 
     try std.testing.expectError(error.CompileError, Database.compile(&invalid_pattern, .{}));
 }
@@ -269,19 +268,19 @@ test "compile error handling" {
 test "compileMulti error handling" {
     // Test with invalid patterns
     const invalid_patterns = [_]Pattern{
-        try Pattern.parse("("),
-        try Pattern.parse("valid"),
+        try .parse("("),
+        try .parse("valid"),
     };
 
     try std.testing.expectError(error.CompileError, Database.compileMulti(&invalid_patterns, .{}));
 }
 
 test "database with different modes" {
-    const pattern = try Pattern.parse("test");
+    const pattern: Pattern = try .parse("test");
 
     // Test block mode
     {
-        const db = try Database.compile(&pattern, .{ .mode = .{ .block = true } });
+        const db: Database = try .compile(&pattern, .{ .mode = .{ .block = true } });
         defer db.deinit();
 
         try std.testing.expect(try db.size() > 0);
@@ -289,7 +288,7 @@ test "database with different modes" {
 
     // Test stream mode
     {
-        const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+        const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
         defer db.deinit();
 
         try std.testing.expect(try db.size() > 0);
@@ -297,7 +296,7 @@ test "database with different modes" {
 
     // Test vectored mode
     {
-        const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+        const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
         defer db.deinit();
 
         try std.testing.expect(try db.size() > 0);
@@ -305,8 +304,8 @@ test "database with different modes" {
 }
 
 test "database with literal mode" {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{ .literal = true });
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{ .literal = true });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -335,16 +334,16 @@ test "database with literal mode" {
 
 test "database with multiple patterns" {
     const patterns = [_]Pattern{
-        try Pattern.parse("hello"),
-        try Pattern.parse("world"),
+        try .parse("hello"),
+        try .parse("world"),
     };
-    const db = try Database.compileMulti(&patterns, .{});
+    const db: Database = try .compileMulti(&patterns, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    var ends = try std.ArrayList(u64).initCapacity(std.testing.allocator, 2);
+    var ends: std.ArrayList(u64) = try .initCapacity(std.testing.allocator, 2);
     defer ends.deinit(std.testing.allocator);
 
     const opts = ScanOptions{

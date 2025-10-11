@@ -77,7 +77,7 @@ pub const Context = struct {
     context: ?*anyopaque,
 
     pub fn init(handler: EventHandler, context: ?*anyopaque) Context {
-        return Context{
+        return .{
             .trampoline = if (handler) |_| &onEvent else null,
             .handler = handler,
             .context = context,
@@ -92,7 +92,7 @@ fn onEvent(id: c_uint, from: c_ulonglong, to: c_ulonglong, flags: c_uint, contex
     const ctx: *Context = @ptrCast(@alignCast(context));
 
     if (ctx.handler) |handler| {
-        const res = handler(Event{
+        const res = handler(.{
             .id = id,
             .from = if (from == hs.HS_OFFSET_PAST_HORIZON) null else from,
             .to = to,
@@ -113,11 +113,11 @@ fn onEvent(id: c_uint, from: c_ulonglong, to: c_ulonglong, flags: c_uint, contex
 // Unit tests
 
 test onEvent {
-    const empty = Context.init(null, null);
+    const empty: Context = .init(null, null);
 
     try std.testing.expectEqual(0, onEvent(0, 0, 0, 0, @constCast(&empty)));
 
-    const terminate = Context.init(struct {
+    const terminate: Context = .init(struct {
         fn handler(_: Event) !void {
             return error.Terminate;
         }

@@ -30,7 +30,7 @@ pub const Options = struct {
 
 /// The block (non-streaming) regular expression scanner.
 pub fn scanBlock(db: *const Database, data: []const u8, scratch: Scratch, opts: Options) !void {
-    const ctx = match.Context.init(opts.onEvent, opts.context);
+    const ctx: match.Context = .init(opts.onEvent, opts.context);
 
     return check(hs.hs_scan(@ptrCast(db.ptr), data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
 }
@@ -49,7 +49,7 @@ pub fn scanVector(db: *const Database, data: []const std.posix.iovec_const, scra
         try lens.append(allocator, @intCast(buf.len));
     }
 
-    const ctx = match.Context.init(opts.onEvent, opts.context);
+    const ctx: match.Context = .init(opts.onEvent, opts.context);
 
     return check(hs.hs_scan_vector(@ptrCast(db.ptr), ptrs.items.ptr, lens.items.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
 }
@@ -76,8 +76,8 @@ pub fn scanStream(db: *const Database, reader: *std.Io.Reader, scratch: Scratch,
 // Unit tests
 
 test scanBlock {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -98,8 +98,8 @@ test scanBlock {
 }
 
 test "scanBlock no matches" {
-    const pattern = try Pattern.parse("xyz");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("xyz");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -120,8 +120,8 @@ test "scanBlock no matches" {
 }
 
 test "scanBlock empty data" {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -142,14 +142,14 @@ test "scanBlock empty data" {
 }
 
 test "scanBlock multiple matches" {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
+    var matches: std.ArrayList(u64) = try .initCapacity(std.testing.allocator, 10);
     defer matches.deinit(std.testing.allocator);
 
     try scanBlock(&db, "hello world hello", scratch, .{
@@ -171,8 +171,8 @@ test "scanBlock multiple matches" {
 }
 
 test "scanBlock without callback" {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -183,8 +183,8 @@ test "scanBlock without callback" {
 }
 
 test "scanBlock callback error handling" {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{});
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -202,8 +202,8 @@ test "scanBlock callback error handling" {
 }
 
 test scanVector {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -229,8 +229,8 @@ test scanVector {
 }
 
 test "scanVector no matches" {
-    const pattern = try Pattern.parse("xyz");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+    const pattern: Pattern = try .parse("xyz");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -256,8 +256,8 @@ test "scanVector no matches" {
 }
 
 test "scanVector empty data" {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -280,8 +280,8 @@ test "scanVector empty data" {
 }
 
 test "scanVector multiple matches" {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -293,7 +293,7 @@ test "scanVector multiple matches" {
         .{ .base = "hello", .len = 5 },
     };
 
-    var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
+    var matches: std.ArrayList(u64) = try .initCapacity(std.testing.allocator, 10);
     defer matches.deinit(std.testing.allocator);
 
     try scanVector(&db, data[0..data.len], scratch, .{
@@ -316,8 +316,8 @@ test "scanVector multiple matches" {
 }
 
 test "scanVector without callback" {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -333,8 +333,8 @@ test "scanVector without callback" {
 }
 
 test "scanVector callback error handling" {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
@@ -359,8 +359,8 @@ test "scanVector callback error handling" {
 test "scan with different pattern types" {
     // Test with simple literal pattern
     {
-        const pattern = try Pattern.parse("hello");
-        const db = try Database.compile(&pattern, .{ .literal = true });
+        const pattern: Pattern = try .parse("hello");
+        const db: Database = try .compile(&pattern, .{ .literal = true });
         defer db.deinit();
 
         const scratch = try db.allocScratch();
@@ -382,8 +382,8 @@ test "scan with different pattern types" {
 
     // Test with complex regex pattern
     {
-        const pattern = try Pattern.parse("\\b\\w+@\\w+\\.\\w+\\b");
-        const db = try Database.compile(&pattern, .{});
+        const pattern: Pattern = try .parse("\\b\\w+@\\w+\\.\\w+\\b");
+        const db: Database = try .compile(&pattern, .{});
         defer db.deinit();
 
         const scratch = try db.allocScratch();
@@ -407,15 +407,15 @@ test "scan with different pattern types" {
 // ===== scanStream Unit Tests =====
 
 test scanStream {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello foobar world";
-    var reader = std.Io.Reader.fixed(test_data);
+    var reader: std.Io.Reader = .fixed(test_data);
     var to: u64 = 0;
 
     try scanStream(&db, &reader, scratch, .{
@@ -431,15 +431,15 @@ test scanStream {
 }
 
 test "scanStream no matches" {
-    const pattern = try Pattern.parse("xyz");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("xyz");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello world";
-    var reader = std.Io.Reader.fixed(test_data);
+    var reader: std.Io.Reader = .fixed(test_data);
     var match_found = false;
 
     try scanStream(&db, &reader, scratch, .{
@@ -455,15 +455,15 @@ test "scanStream no matches" {
 }
 
 test "scanStream empty data" {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "";
-    var reader = std.Io.Reader.fixed(test_data);
+    var reader: std.Io.Reader = .fixed(test_data);
     var match_found = false;
 
     try scanStream(&db, &reader, scratch, .{
@@ -479,16 +479,16 @@ test "scanStream empty data" {
 }
 
 test "scanStream multiple matches" {
-    const pattern = try Pattern.parse("hello");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("hello");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello world hello";
-    var reader = std.Io.Reader.fixed(test_data);
-    var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
+    var reader: std.Io.Reader = .fixed(test_data);
+    var matches: std.ArrayList(u64) = try .initCapacity(std.testing.allocator, 10);
     defer matches.deinit(std.testing.allocator);
 
     try scanStream(&db, &reader, scratch, .{
@@ -508,30 +508,30 @@ test "scanStream multiple matches" {
 }
 
 test "scanStream without callback" {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello foobar world";
-    var reader = std.Io.Reader.fixed(test_data);
+    var reader: std.Io.Reader = .fixed(test_data);
 
     // Should not crash when no callback is provided
     try scanStream(&db, &reader, scratch, .{});
 }
 
 test "scanStream callback error handling" {
-    const pattern = try Pattern.parse("f[o]+");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("f[o]+");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello foobar world";
-    var reader = std.Io.Reader.fixed(test_data);
+    var reader: std.Io.Reader = .fixed(test_data);
 
     try std.testing.expectError(error.ScanTerminated, scanStream(&db, &reader, scratch, .{
         .onEvent = struct {
@@ -545,15 +545,15 @@ test "scanStream callback error handling" {
 }
 
 test "scanStream large data" {
-    const pattern = try Pattern.parse("test");
-    const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+    const pattern: Pattern = try .parse("test");
+    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Create data larger than page size to test chunked reading
-    var test_data = try std.ArrayList(u8).initCapacity(std.testing.allocator, std.heap.pageSize() * 2);
+    var test_data: std.ArrayList(u8) = try .initCapacity(std.testing.allocator, std.heap.pageSize() * 2);
     defer test_data.deinit(std.testing.allocator);
 
     // Fill with "hello" repeated many times, then add "test" at the end
@@ -562,7 +562,7 @@ test "scanStream large data" {
     }
     try test_data.appendSlice(std.testing.allocator, "test");
 
-    var reader = std.Io.Reader.fixed(test_data.items);
+    var reader: std.Io.Reader = .fixed(test_data.items);
     var match_found = false;
 
     try scanStream(&db, &reader, scratch, .{

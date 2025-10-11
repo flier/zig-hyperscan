@@ -42,7 +42,7 @@ pub fn raw(self: *const Ext) hs.hs_expr_ext_t {
         flags |= hs.HS_EXT_FLAG_MIN_OFFSET;
     }
 
-    return hs.hs_expr_ext_t{
+    return .{
         .flags = flags,
         .min_offset = self.min_offset orelse 0,
         .max_offset = self.max_offset orelse 0,

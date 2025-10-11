@@ -72,10 +72,10 @@ const Options = struct {
             showUsage(program);
         }
 
-        var patterns = try std.ArrayList(hs.Pattern).initCapacity(allocator, args.len - idx - 1);
+        var patterns: std.ArrayList(hs.Pattern) = try .initCapacity(allocator, args.len - idx - 1);
 
         for (args[idx .. args.len - 1]) |arg| {
-            var pattern = try hs.Pattern.parse(arg);
+            var pattern: hs.Pattern = try .parse(arg);
 
             pattern.flags.som_leftmost = true;
 
@@ -102,14 +102,14 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    var opts = try Options.parse(allocator, args);
+    var opts: Options = try .parse(allocator, args);
     defer opts.deinit(allocator);
 
     std.log.debug("Options: {f}", .{opts});
 
     // Compile patterns into a database
 
-    var db = try hs.Database.compileMulti(opts.patterns.items, .{
+    var db: hs.Database = try .compileMulti(opts.patterns.items, .{
         .mode = .{ .stream = opts.stream, .block = !opts.stream, .som_horizon_large = opts.stream },
     });
     defer db.deinit();
