@@ -136,13 +136,13 @@ pub fn main() !void {
     // Scan input file
 
     if (opts.stream) {
-        try scan_stream(f, &opts.patterns, db, scratch);
+        try scanStream(f, &opts.patterns, db, scratch);
     } else {
-        try scan_block(allocator, f, &opts.patterns, db, scratch);
+        try scanBlock(allocator, f, &opts.patterns, db, scratch);
     }
 }
 
-fn scan_block(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
+fn scanBlock(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
     const data = try f.readToEndAlloc(allocator, std.math.maxInt(usize));
     defer allocator.free(data);
 
@@ -159,7 +159,7 @@ fn scan_block(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.Array
     });
 }
 
-fn scan_stream(f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
+fn scanStream(f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
     const ctx = Context{
         .patterns = patterns.items,
     };
