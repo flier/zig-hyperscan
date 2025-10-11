@@ -11,6 +11,8 @@ const hs = @cImport({
     @cInclude("hs/hs.h");
 });
 
+const Serialized = @import("serialized.zig");
+
 const compile_ = @import("../compile.zig");
 
 pub const CompileOptions = compile_.Options;
@@ -28,13 +30,16 @@ const check = @import("../common.zig").check;
 pub const Database = @This();
 
 ptr: *const hs.hs_database_t,
-mode: Mode,
 
-pub fn init(db: *const hs.hs_database_t, mode: Mode) Database {
+pub fn init(db: *const hs.hs_database_t) Database {
     return Database{
         .ptr = db,
-        .mode = mode,
     };
+}
+
+/// Serialize a pattern database to a stream of bytes.
+pub fn serialize(self: *const Database) !Serialized {
+    return Serialized.serialize(self);
 }
 
 /// The basic regular expression compiler.
@@ -112,7 +117,7 @@ test compile {
     const db = try Database.compile(&pattern, .{});
     defer db.deinit();
 
-    try std.testing.expect(db.mode.block);
+    try std.testing.expect(try db.size() > 0);
 }
 
 test "compile with custom options" {
@@ -124,8 +129,7 @@ test "compile with custom options" {
     const db = try Database.compile(&pattern, opts);
     defer db.deinit();
 
-    try std.testing.expect(db.ptr != @as(?*const hs.hs_database_t, @ptrFromInt(0)));
-    try std.testing.expectEqual(Mode{ .stream = true }, db.mode);
+    try std.testing.expect(try db.size() > 0);
 }
 
 test compile_multi {
@@ -139,7 +143,7 @@ test compile_multi {
     });
     defer db.deinit();
 
-    try std.testing.expect(db.mode.vectored);
+    try std.testing.expect(try db.size() > 0);
 }
 
 test info {
@@ -276,7 +280,7 @@ test "database with different modes" {
         const db = try Database.compile(&pattern, .{ .mode = .{ .block = true } });
         defer db.deinit();
 
-        try std.testing.expect(db.mode.block);
+        try std.testing.expect(try db.size() > 0);
     }
 
     // Test stream mode
@@ -284,7 +288,7 @@ test "database with different modes" {
         const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
         defer db.deinit();
 
-        try std.testing.expect(db.mode.stream);
+        try std.testing.expect(try db.size() > 0);
     }
 
     // Test vectored mode
@@ -292,7 +296,7 @@ test "database with different modes" {
         const db = try Database.compile(&pattern, .{ .mode = .{ .vectored = true } });
         defer db.deinit();
 
-        try std.testing.expect(db.mode.vectored);
+        try std.testing.expect(try db.size() > 0);
     }
 }
 

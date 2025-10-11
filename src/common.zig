@@ -3,6 +3,7 @@
 const std = @import("std");
 
 pub const Database = @import("common/database.zig");
+pub const Serialized = @import("common/serialized.zig");
 
 const err = @import("common/error.zig");
 

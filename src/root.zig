@@ -11,8 +11,9 @@ pub const version = ver.version;
 
 const common = @import("common.zig");
 
-pub const Database = common.Database;
 pub const Error = common.Error;
+pub const Database = common.Database;
+pub const Serialized = common.Serialized;
 
 // The Hyperscan compiler API definition.
 
