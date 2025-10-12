@@ -67,7 +67,7 @@ fn addSearchPrefix(b: *std.Build, prefix: []const u8) void {
     if (std.fs.openDirAbsolute(prefix, .{})) |_| {
         b.addSearchPrefix(prefix);
     } else |_| {
-        // ignore if the directory does not exist
+        std.log.debug("directory {s} does not exist", .{prefix});
     }
 }
 
