@@ -128,6 +128,7 @@ fn buildExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
 
     simplegrep.root_module.addImport("clap", clap.module("clap"));
     simplegrep.root_module.linkSystemLibrary("hs", .{});
+    simplegrep.root_module.link_libc = true;
 
     b.installArtifact(simplegrep);
 
@@ -157,6 +158,7 @@ fn buildTests(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bui
     });
 
     mod_tests.root_module.linkSystemLibrary("hs", .{});
+    mod_tests.root_module.link_libc = true;
 
     b.installArtifact(mod_tests);
 
@@ -165,6 +167,7 @@ fn buildTests(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.bui
     });
 
     unit_tests.root_module.linkSystemLibrary("hs", .{});
+    unit_tests.root_module.link_libc = true;
 
     b.installArtifact(unit_tests);
 
