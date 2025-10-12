@@ -28,7 +28,9 @@ jobs:
         if: startsWith(matrix.os, 'macos-')
         run: |
           brew install vectorscan pkg-config libpcap
-      - uses: actions/checkout@v4
+      - run: |
+          git config core.ignorecase false
+      - uses: actions/checkout@v5
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{matrix.zig}}
@@ -40,6 +42,8 @@ jobs:
       - run: |
           sudo apt-get update
           sudo apt-get install -yq libhyperscan-dev
-      - uses: actions/checkout@v4
+      - run: |
+          git config core.ignorecase false
+      - uses: actions/checkout@v5
       - uses: mlugg/setup-zig@v2
       - run: zig build lint
