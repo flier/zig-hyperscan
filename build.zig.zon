@@ -8,6 +8,10 @@
             .url = "git+https://github.com/kurtwagner/zlinter?ref=0.15.x#543d0f96907a0369eefd1a55e2042f468572463a",
             .hash = "zlinter-0.0.1-OjQ08XlVCwB5nFaGD-AamzZFFT-_2i_jpXzIKLazNEq3",
         },
+        .clap = .{
+            .url = "https://github.com/Hejsil/zig-clap/archive/refs/tags/0.11.0.tar.gz",
+            .hash = "clap-0.11.0-oBajB-HnAQDPCKYzwF7rO3qDFwRcD39Q0DALlTSz5H7e",
+        },
     },
     .paths = .{
         "build.zig",

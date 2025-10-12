@@ -1,95 +1,7 @@
 const std = @import("std");
 
+const clap = @import("clap");
 const hs = @import("hyperscan");
-
-const usage =
-    \\Usage: {s} [options] <pattern> <input file>
-    \\
-    \\Options:
-    \\  -h, --help       Show this help message and exit
-    \\  -s, --stream     Use streaming mode
-    \\
-    \\Examples:
-    \\  {s} -s foobar input.txt
-    \\  {s} /foobar/i input.txt
-    \\
-;
-
-fn showUsage(program: []const u8) noreturn {
-    std.debug.print(usage, .{ program, program, program });
-
-    std.process.exit(0);
-}
-
-const Options = struct {
-    patterns: std.ArrayList(hs.Pattern),
-    input_file: []const u8,
-    stream: bool,
-
-    pub fn deinit(s: *@This(), allocator: std.mem.Allocator) void {
-        s.patterns.deinit(allocator);
-    }
-
-    pub fn format(s: @This(), writer: *std.Io.Writer) !void {
-        try writer.print("input_file: {s}, stream: {}", .{ s.input_file, s.stream });
-
-        if (s.patterns.items.len > 0) {
-            try writer.print(", patterns: {{", .{});
-
-            for (s.patterns.items, 0..) |pattern, i| {
-                if (i > 0) {
-                    try writer.print(", ", .{});
-                }
-
-                try writer.print("{d}: {f}", .{ pattern.id orelse 0, pattern });
-            }
-
-            try writer.print("}}", .{});
-        }
-    }
-
-    pub fn parse(allocator: std.mem.Allocator, args: []const []const u8) !Options {
-        const program = std.fs.path.basename(args[0]);
-        var stream = false;
-        var idx: usize = 1;
-
-        while (idx < args.len) {
-            const arg = args[idx];
-
-            if (arg[0] != '-') {
-                break;
-            }
-
-            if (std.mem.eql(u8, arg, "-h") | std.mem.eql(u8, arg, "--help")) {
-                showUsage(program);
-            } else if (std.mem.eql(u8, arg, "-s") | std.mem.eql(u8, arg, "--stream")) {
-                stream = true;
-            }
-
-            idx += 1;
-        }
-
-        if (args.len < idx + 2) {
-            showUsage(program);
-        }
-
-        var patterns: std.ArrayList(hs.Pattern) = try .initCapacity(allocator, args.len - idx - 1);
-
-        for (args[idx .. args.len - 1]) |arg| {
-            var pattern: hs.Pattern = try .parse(arg);
-
-            pattern.flags.som_leftmost = true;
-
-            try patterns.append(allocator, pattern);
-        }
-
-        return Options{
-            .patterns = patterns,
-            .input_file = args[args.len - 1],
-            .stream = stream,
-        };
-    }
-};
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}).init;
@@ -98,61 +10,118 @@ pub fn main() !void {
         _ = gpa.deinit();
     }
 
+    var buf: [std.heap.pageSize()]u8 = undefined;
+
     // Parse command line arguments
-
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-
-    var opts: Options = try .parse(allocator, args);
+    var opts = try Options.parse(allocator, &buf);
     defer opts.deinit(allocator);
 
-    std.log.debug("Options: {f}", .{opts});
-
     // Compile patterns into a database
-
     var db: hs.Database = try .compileMulti(opts.patterns.items, .{
-        .mode = .{ .stream = opts.stream, .block = !opts.stream, .som_horizon_large = opts.stream },
+        .mode = if (opts.stream) .{ .stream = true, .som_horizon_large = true } else .{ .block = true },
     });
     defer db.deinit();
 
     // Get database information
-
     const db_info = try db.info(allocator);
     defer allocator.free(db_info);
 
     std.log.debug("Hyperscan {s} Database size: {d} bytes", .{ db_info, try db.size() });
 
     // Allocate scratch space for scanning
-
     const scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    std.log.debug("Scratch size: {d} bytes", .{try scratch.size()});
-
-    // Open input file
-
-    var input = try std.fs.cwd().openFile(opts.input_file, .{});
-    defer input.close();
-
     // Scan input file
-
     if (opts.stream) {
-        try scanStream(input, &opts.patterns, db, scratch);
+        try scanStream(opts.input_file, opts.patterns.items, &buf, db, scratch);
     } else {
-        try scanBlock(allocator, input, &opts.patterns, db, scratch);
+        try scanBlock(allocator, opts.input_file, &buf, opts.patterns.items, db, scratch);
     }
 }
 
-fn scanBlock(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
-    var buf: [std.heap.pageSize()]u8 = undefined;
-    var reader = f.reader(&buf);
+const Options = struct {
+    stream: bool,
+    patterns: std.ArrayList(hs.Pattern),
+    input_file: std.fs.File,
+
+    fn deinit(self: *Options, allocator: std.mem.Allocator) void {
+        self.patterns.deinit(allocator);
+        self.input_file.close();
+    }
+
+    fn parse(allocator: std.mem.Allocator, buf: []u8) !Options {
+        const params = comptime clap.parseParamsComptime(
+            \\-h, --help                Display this help and exit.
+            \\-s, --stream              Use streaming mode.
+            \\<PATTERN>...              Regular expression patterns.
+            \\<INPUT_FILE>              Input file.
+        );
+
+        var diag = clap.Diagnostic{};
+        var res = clap.parse(clap.Help, &params, comptime .{
+            .PATTERN = clap.parsers.string,
+            .INPUT_FILE = clap.parsers.string,
+        }, .{
+            .diagnostic = &diag,
+            .allocator = allocator,
+        }) catch |err| {
+            // Report useful error and exit.
+            try diag.reportToFile(.stdout(), err);
+            return err;
+        };
+        defer res.deinit();
+
+        if (res.args.help != 0) {
+            const stdout = std.fs.File.stdout();
+            var writer = stdout.writer(buf);
+            var out = &writer.interface;
+
+            if (res.exe_arg) |program| {
+                try out.print("Usage: {s} ", .{std.fs.path.basename(program)});
+            }
+
+            try clap.usage(out, clap.Help, &params);
+            try out.print("\n\nOptions:\n\n", .{});
+            try clap.help(out, clap.Help, &params, .{});
+            try out.flush();
+
+            std.process.exit(0);
+        }
+
+        const exprs, const input_file = res.positionals;
+
+        return .{
+            .stream = res.args.stream != 0,
+            .patterns = try parsePatterns(allocator, exprs),
+            .input_file = if (input_file) |file| try std.fs.cwd().openFile(file, .{}) else std.fs.File.stdin(),
+        };
+    }
+
+    fn parsePatterns(allocator: std.mem.Allocator, exprs: []const []const u8) !std.ArrayList(hs.Pattern) {
+        var patterns: std.ArrayList(hs.Pattern) = try .initCapacity(allocator, exprs.len);
+
+        for (exprs) |expr| {
+            var pattern = try hs.Pattern.parse(expr);
+
+            pattern.flags.som_leftmost = true;
+
+            try patterns.append(allocator, pattern);
+        }
+
+        return patterns;
+    }
+};
+
+fn scanBlock(allocator: std.mem.Allocator, f: std.fs.File, buf: []u8, patterns: []const hs.Pattern, db: hs.Database, scratch: hs.Scratch) !void {
+    var reader = f.reader(buf);
     const data = try reader.interface.allocRemaining(allocator, .unlimited);
     defer allocator.free(data);
 
     std.log.debug("Data size: {d} bytes", .{data.len});
 
     const ctx = Context{
-        .patterns = patterns.items,
+        .patterns = patterns,
         .data = data,
     };
 
@@ -162,13 +131,12 @@ fn scanBlock(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.ArrayL
     });
 }
 
-fn scanStream(f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
+fn scanStream(f: std.fs.File, patterns: []const hs.Pattern, buf: []u8, db: hs.Database, scratch: hs.Scratch) !void {
     const ctx = Context{
-        .patterns = patterns.items,
+        .patterns = patterns,
     };
 
-    var buf: [std.heap.pageSize()]u8 = undefined;
-    var reader = f.readerStreaming(&buf);
+    var reader = f.readerStreaming(buf);
 
     try db.scanStream(&reader.interface, scratch, .{
         .onEvent = onEvent,

@@ -87,6 +87,9 @@ fn addlintCmd(b: *std.Build) void {
                         .severity = .warning,
                     },
                 },
+                .max_positional_args => .{
+                    .max = 7,
+                },
                 .no_inferred_error_unions, .require_doc_comment => {
                     continue;
                 },
@@ -101,6 +104,8 @@ fn addlintCmd(b: *std.Build) void {
 }
 
 fn buildExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, hyperscan_mod: *std.Build.Module) void {
+    const clap = b.dependency("clap", .{});
+
     const simplegrep = b.addExecutable(.{
         .name = "simplegrep",
         .root_module = b.createModule(.{
@@ -113,6 +118,7 @@ fn buildExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         }),
     });
 
+    simplegrep.root_module.addImport("clap", clap.module("clap"));
     simplegrep.root_module.linkSystemLibrary("hs", .{});
 
     b.installArtifact(simplegrep);
