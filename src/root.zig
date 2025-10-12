@@ -6,6 +6,7 @@ const ver = @import("version.zig");
 
 pub const current_version = ver.current_version;
 pub const version = ver.version;
+pub const Version = ver.Version;
 
 // The Hyperscan common API definition.
 
