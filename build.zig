@@ -64,11 +64,10 @@ fn addHyperscanToSearchPrefixes(b: *std.Build, target: std.Build.ResolvedTarget)
 }
 
 fn addSearchPrefix(b: *std.Build, prefix: []const u8) void {
-    if (std.fs.openDirAbsolute(prefix, .{})) |_| {
-        b.addSearchPrefix(prefix);
-    } else |_| {
-        std.log.debug("directory {s} does not exist", .{prefix});
-    }
+    var dir = (std.fs.openDirAbsolute(prefix, .{})) catch return;
+    defer dir.close();
+
+    b.addSearchPrefix(prefix);
 }
 
 fn addlintCmd(b: *std.Build) void {
