@@ -54,12 +54,20 @@ fn addHyperscanToSearchPrefixes(b: *std.Build, target: std.Build.ResolvedTarget)
     // Add search prefix for Homebrew
     switch (target.result.os.tag) {
         .macos => switch (target.result.cpu.arch.family()) {
-            .aarch64 => b.addSearchPrefix("/opt/homebrew/"),
-            .x86 => b.addSearchPrefix("/usr/local/"),
+            .aarch64 => addSearchPrefix(b, "/opt/homebrew/"),
+            .x86 => addSearchPrefix(b, "/usr/local/"),
             else => {},
         },
-        .linux => b.addSearchPrefix("/home/linuxbrew/.linuxbrew"),
+        .linux => addSearchPrefix(b, "/home/linuxbrew/.linuxbrew"),
         else => {},
+    }
+}
+
+fn addSearchPrefix(b: *std.Build, prefix: []const u8) void {
+    if (std.fs.openDirAbsolute(prefix, .{})) |_| {
+        b.addSearchPrefix(prefix);
+    } else |_| {
+        // ignore if the directory does not exist
     }
 }
 
