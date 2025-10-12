@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        zig: [0.14, latest]
+        zig: [0.14.1, 0.15.1]
     runs-on: ${{matrix.os}}
     steps:
       - name: Install Linux dependencies
@@ -27,7 +27,7 @@ jobs:
       - name: Install MacOS dependencies
         if: startsWith(matrix.os, 'macos-')
         run: |
-          brew install hyperscan pkg-config libpcap
+          brew install vectorscan pkg-config libpcap
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
         with:
