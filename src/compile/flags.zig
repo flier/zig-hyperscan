@@ -27,6 +27,39 @@ pub const Flags = packed struct(u32) {
 
     reserved: u21 = 0,
 
+    /// Parse flags from a string representation.
+    ///
+    /// Parses a string containing flag characters and returns the corresponding
+    /// Flags struct. The string can contain any combination of valid flag characters
+    /// in any order.
+    ///
+    /// Supported flag characters:
+    /// - `i`: Case-insensitive matching
+    /// - `s`: Dot matches newline
+    /// - `m`: Multiline mode
+    /// - `H`: Single match only
+    /// - `V`: Allow empty matches
+    /// - `8`: UTF-8 mode
+    /// - `W`: Unicode property support
+    /// - `P`: Prefiltering mode
+    /// - `L`: Leftmost start of match
+    /// - `C`: Logical combination
+    /// - `Q`: Quiet mode (no match reporting)
+    ///
+    /// ## Arguments
+    /// - `s`: The string containing flag characters
+    ///
+    /// ## Returns
+    /// A `Flags` struct with the parsed flags, or an error if invalid characters are found.
+    ///
+    /// # Errors
+    /// - `error.Invalid`: If the string contains invalid flag characters
+    ///
+    /// ## Example
+    /// ```zig
+    /// const flags = try Flags.parse("ism"); // Case-insensitive, dot-all, multiline
+    /// const flags2 = try Flags.parse("HV8"); // Single match, allow empty, UTF-8
+    /// ```
     pub fn parse(s: []const u8) !Flags {
         if (std.mem.indexOfNone(u8, s, all_chars)) |_| {
             return error.Invalid;
@@ -48,6 +81,28 @@ pub const Flags = packed struct(u32) {
     }
 
     /// Format the flags to a string.
+    ///
+    /// Formats the flags as a string representation that can be parsed back using `parse()`.
+    /// The flags are output in a consistent order: i, s, m, H, V, 8, W, P, L, C, Q.
+    ///
+    /// ## Arguments
+    /// - `self`: The flags to format
+    /// - `writer`: The writer to output the formatted string to
+    ///
+    /// ## Returns
+    /// An error if writing fails.
+    ///
+    /// ## Example
+    /// ```zig
+    /// const flags = Flags{ .caseless = true, .multiline = true };
+    ///
+    /// var buffer = std.ArrayList(u8).init(allocator);
+    /// defer buffer.deinit();
+    ///
+    /// try flags.format(buffer.writer());
+    ///
+    /// std.log.info("Formatted flags: {s}", .{buffer.items}); // "im"
+    /// ```
     pub fn format(self: Flags, writer: *std.Io.Writer) !void {
         if (self.caseless) {
             try writer.printAsciiChar('i', .{});
@@ -85,6 +140,24 @@ pub const Flags = packed struct(u32) {
     }
 
     /// Get the value of the flags.
+    ///
+    /// Returns the raw u32 value representing the flags, which can be used
+    /// for direct comparison or bit manipulation operations.
+    ///
+    /// ## Arguments
+    /// - `self`: The flags to get the value of
+    ///
+    /// ## Returns
+    /// The raw u32 value of the flags.
+    ///
+    /// ## Example
+    /// ```zig
+    /// const flags = Flags{ .caseless = true, .multiline = true };
+    ///
+    /// const value = flags.value();
+    ///
+    /// std.log.info("Flags value: {}", .{value}); // 5 (1 + 4)
+    /// ```
     pub inline fn value(self: Flags) u32 {
         return @bitCast(self);
     }

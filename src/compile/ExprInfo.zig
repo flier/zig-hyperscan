@@ -10,6 +10,7 @@ const ExprExt = @import("ExprExt.zig");
 const check = @import("../common.zig").check;
 const freeCompileError = @import("../compile.zig").freeCompileError;
 
+/// The maximum length in bytes of a match for the pattern.
 pub const MaxLength = union(enum) {
     /// The pattern has an unbounded maximum length.
     unbounded,
@@ -25,7 +26,7 @@ pub const MaxLength = union(enum) {
 min_width: u32,
 /// The maximum length in bytes of a match for the pattern.
 ///
-/// If the pattern has an unbounded maximum length, this will be set to `null`.
+/// If the pattern has an unbounded maximum length, this will be set to `.unbounded`.
 max_width: MaxLength,
 /// Whether this expression can produce matches that are not returned in order, such as those produced by assertions.
 unordered_matches: bool = false,
@@ -37,6 +38,27 @@ matches_only_at_eod: bool = false,
 const Info = @This();
 
 /// Utility function providing information about a regular expression.
+///
+/// Analyzes the pattern and returns detailed information about its properties,
+/// including minimum/maximum width, match behavior, and other characteristics.
+///
+/// ## Arguments
+/// - `expr`: The pattern to analyze
+/// - `flags`: The flags to use for the analysis
+/// - `ext`: The additional parameters to use for the analysis
+///
+/// ## Returns
+/// An `Info` struct containing analysis results, or an error if the pattern is invalid.
+///
+/// # Errors
+/// - `error.CompileError`: If the pattern contains invalid regex syntax
+///
+/// ## Example
+/// ```zig
+/// const pattern = try Pattern.parse("hello.*world");
+/// const info = try pattern.exprInfo();
+/// std.log.info("Min width: {}, Max width: {}", .{ info.min_width, info.max_width });
+/// ```
 pub fn analysis(expr: []const u8, flags: Flags, ext: ?ExprExt) !Info {
     var expr_info: ?*hs.hs_expr_info_t = null;
     var err: ?*hs.hs_compile_error_t = null;

@@ -97,7 +97,7 @@ fn addlintCmd(b: *std.Build) void {
                 .max_positional_args => .{
                     .max = 7,
                 },
-                .no_inferred_error_unions, .require_doc_comment => {
+                .no_inferred_error_unions => {
                     continue;
                 },
                 else => .{},

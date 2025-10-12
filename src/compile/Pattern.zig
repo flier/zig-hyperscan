@@ -20,6 +20,21 @@ ext: ?ExprExt = null,
 const Pattern = @This();
 
 /// Initialize a pattern with expression and flags.
+///
+/// Creates a new pattern with the given regular expression string and compile flags.
+/// The pattern can be used for compilation into a Hyperscan database.
+///
+/// ## Arguments
+/// - `expr`: The regular expression string to compile
+/// - `flags`: Compile flags that modify the behavior of the expression
+///
+/// ## Returns
+/// A new `Pattern` instance with the specified expression and flags.
+///
+/// ## Example
+/// ```zig
+/// const pattern = Pattern.init("hello.*world", .{ .caseless = true });
+/// ```
 pub fn init(expr: []const u8, flags: Flags) Pattern {
     return .{
         .expr = expr,
@@ -28,6 +43,27 @@ pub fn init(expr: []const u8, flags: Flags) Pattern {
 }
 
 /// Create a pattern with additional parameters.
+///
+/// Creates a new pattern based on the current pattern but with additional expression
+/// parameters such as offset constraints, length requirements, or edit distance limits.
+///
+/// ## Arguments
+/// - `self`: The source pattern to extend
+/// - `ext`: Additional expression parameters to apply
+///
+/// ## Returns
+/// A new `Pattern` instance with the same expression, flags, and ID as the source,
+/// but with the additional parameters applied.
+///
+/// ## Example
+/// ```zig
+/// const base_pattern = Pattern.init("test", .{});
+/// const extended_pattern = base_pattern.withExt(.{
+///     .min_offset = 10,
+///     .max_offset = 100,
+///     .min_length = 5,
+/// });
+/// ```
 pub fn withExt(self: *const Pattern, ext: ExprExt) Pattern {
     return .{
         .expr = self.expr,
@@ -38,6 +74,40 @@ pub fn withExt(self: *const Pattern, ext: ExprExt) Pattern {
 }
 
 /// Parse a pattern from a string.
+///
+/// Parses a pattern string that may include flags and optional ID in various formats:
+/// - Simple: `"expression"` - just the regex expression
+/// - With flags: `"/expression/flags"` - expression with compile flags
+/// - With ID and flags: `"id:/expression/flags"` - pattern with ID and flags
+///
+/// Supported flag characters:
+/// - `i`: Case-insensitive matching
+/// - `s`: Dot matches newline
+/// - `m`: Multiline mode
+/// - `H`: Single match only
+/// - `V`: Allow empty matches
+/// - `8`: UTF-8 mode
+/// - `W`: Unicode property support
+/// - `P`: Prefiltering mode
+/// - `L`: Leftmost start of match
+/// - `C`: Logical combination
+/// - `Q`: Quiet mode (no match reporting)
+///
+/// ## Arguments
+/// - `s`: The pattern string to parse
+///
+/// ## Returns
+/// A `Pattern` instance parsed from the string, or an error if the format is invalid.
+///
+/// # Errors
+/// - `error.Invalid`: If the pattern string contains invalid flag characters
+///
+/// ## Example
+/// ```zig
+/// const pattern1 = try Pattern.parse("hello");
+/// const pattern2 = try Pattern.parse("/hello/i");
+/// const pattern3 = try Pattern.parse("42:/hello.*world/ism");
+/// ```
 pub fn parse(s: []const u8) !Pattern {
     if (std.mem.indexOf(u8, s, ":/")) |start| {
         if (start > 0 and std.mem.indexOfNone(u8, s[0..start], "0123456789") == null) {
@@ -69,11 +139,52 @@ pub fn parse(s: []const u8) !Pattern {
 }
 
 /// Utility function providing information about a regular expression.
+///
+/// Analyzes the pattern and returns detailed information about its properties,
+/// including minimum/maximum width, match behavior, and other characteristics.
+///
+/// ## Arguments
+/// - `self`: The pattern to analyze
+///
+/// ## Returns
+/// An `ExprInfo` struct containing analysis results, or an error if the pattern is invalid.
+///
+/// # Errors
+/// - `error.CompileError`: If the pattern contains invalid regex syntax
+///
+/// ## Example
+/// ```zig
+/// const pattern = try Pattern.parse("hello.*world");
+/// const info = try pattern.exprInfo();
+/// std.log.info("Min width: {}, Max width: {}", .{ info.min_width, info.max_width });
+/// ```
 pub fn exprInfo(self: *const Pattern) !ExprInfo {
     return .analysis(self.expr, self.flags, self.ext);
 }
 
 /// Format a pattern to a string.
+///
+/// Formats the pattern as a string representation that can be parsed back using `parse()`.
+/// The format includes the expression, flags, and optional ID in a standardized format.
+///
+/// ## Arguments
+/// - `self`: The pattern to format
+/// - `writer`: The writer to output the formatted string to
+///
+/// ## Returns
+/// An error if writing fails.
+///
+/// ## Example
+/// ```zig
+/// const pattern = try Pattern.parse("42:/hello.*world/ism");
+///
+/// var buffer = std.ArrayList(u8).init(allocator);
+/// defer buffer.deinit();
+///
+/// try pattern.format(buffer.writer());
+///
+/// std.log.info("Formatted pattern: {s}", .{buffer.items});
+/// ```
 pub fn format(self: *const Pattern, writer: *std.Io.Writer) !void {
     if (self.id) |id| {
         try writer.print("{d}:/{s}/{f}", .{ id, self.expr, self.flags });

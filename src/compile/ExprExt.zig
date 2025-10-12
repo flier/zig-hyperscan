@@ -18,6 +18,28 @@ hamming_distance: ?u32 = null,
 const Ext = @This();
 
 /// Utility function to convert the expression ext to a C type.
+///
+/// Converts the Zig ExprExt struct to the corresponding C structure that can be
+/// passed to Hyperscan's C API. This is used internally during pattern compilation.
+///
+/// ## Arguments
+/// - `self`: The ExprExt to convert
+///
+/// ## Returns
+/// A C-compatible `hs_expr_ext_t` structure with the same parameters.
+///
+/// ## Example
+/// ```zig
+/// const ext = ExprExt{
+///     .min_offset = 10,
+///     .max_offset = 100,
+///     .min_length = 5,
+/// };
+///
+/// const c_ext = ext.raw();
+///
+/// // Use c_ext with Hyperscan C API
+/// ```
 pub fn raw(self: *const Ext) hs.hs_expr_ext_t {
     var flags: u64 = 0;
 

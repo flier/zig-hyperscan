@@ -24,6 +24,25 @@ pub const OpenOptions = struct {
 };
 
 /// Open and initialise a stream.
+///
+/// Creates a new streaming context for the given database. The stream maintains
+/// state between scan operations and is required for streaming mode scanning.
+///
+/// ## Arguments
+/// - `db`: The database to create a stream for (must be compiled in stream mode)
+/// - `opts`: Stream options including flags
+///
+/// ## Returns
+/// A new `Stream` object, or an error if stream creation fails.
+///
+/// ## Example
+/// ```zig
+/// const db = try Database.compile(&pattern, .{ .mode = .{ .stream = true } });
+/// defer db.deinit();
+///
+/// const stream = try Stream.open(&db, .{});
+/// defer stream.deinit();
+/// ```
 pub fn open(db: *const Database, opts: OpenOptions) !Stream {
     var stream_id: ?*hs.hs_stream_t = null;
 
@@ -35,6 +54,29 @@ pub fn open(db: *const Database, opts: OpenOptions) !Stream {
 }
 
 /// Write data to be scanned to the opened stream.
+///
+/// Scans a chunk of data in streaming mode, maintaining state between calls.
+/// This allows for scanning data that arrives in chunks or is too large to
+/// fit in memory all at once.
+///
+/// ## Arguments
+/// - `self`: The stream to scan data with
+/// - `data`: The data chunk to scan
+/// - `scratch`: Scratch space allocated for the database
+/// - `opts`: Scan options including event handler and context
+///
+/// ## Returns
+/// An error if scanning fails.
+///
+/// ## Example
+/// ```zig
+/// const stream = try Stream.open(&db, .{});
+/// defer stream.deinit();
+///
+/// try stream.scan("chunk1", scratch, .{ .onEvent = onMatch });
+/// try stream.scan("chunk2", scratch, .{ .onEvent = onMatch });
+/// try stream.close(scratch, .{ .onEvent = onMatch });
+/// ```
 pub fn scan(self: *const Stream, data: []const u8, scratch: Scratch, opts: ScanOptions) !void {
     const ctx: match.Context = .init(opts.onEvent, opts.context);
 
@@ -42,6 +84,26 @@ pub fn scan(self: *const Stream, data: []const u8, scratch: Scratch, opts: ScanO
 }
 
 /// Close a stream.
+///
+/// Finalizes the streaming scan and processes any remaining matches. This must
+/// be called after all data has been scanned to ensure all matches are reported.
+///
+/// ## Arguments
+/// - `self`: The stream to close
+/// - `scratch`: Scratch space allocated for the database
+/// - `opts`: Scan options including event handler and context
+///
+/// ## Returns
+/// An error if closing fails.
+///
+/// ## Example
+/// ```zig
+/// const stream = try Stream.open(&db, .{});
+/// defer stream.deinit();
+///
+/// try stream.scan("data", scratch, .{ .onEvent = onMatch });
+/// try stream.close(scratch, .{ .onEvent = onMatch });
+/// ```
 pub fn close(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
     const ctx: match.Context = .init(opts.onEvent, opts.context);
 
@@ -49,6 +111,30 @@ pub fn close(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
 }
 
 /// Reset a stream to an initial state.
+///
+/// Resets the stream to its initial state, clearing any accumulated state.
+/// This is useful when reusing a stream for multiple independent scans.
+///
+/// ## Arguments
+/// - `self`: The stream to reset
+/// - `scratch`: Scratch space allocated for the database
+/// - `opts`: Scan options including event handler and context
+///
+/// ## Returns
+/// An error if reset fails.
+///
+/// ## Example
+/// ```zig
+/// const stream = try Stream.open(&db, .{});
+/// defer stream.deinit();
+///
+/// try stream.scan("first data", scratch, .{ .onEvent = onMatch });
+/// try stream.close(scratch, .{ .onEvent = onMatch });
+///
+/// try stream.reset(scratch, .{ .onEvent = onMatch });
+/// try stream.scan("second data", scratch, .{ .onEvent = onMatch });
+/// try stream.close(scratch, .{ .onEvent = onMatch });
+/// ```
 pub fn reset(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
     const ctx: match.Context = .init(opts.onEvent, opts.context);
 
@@ -57,7 +143,27 @@ pub fn reset(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
 
 /// Duplicate the given stream.
 ///
-/// The new stream will have the same state as the original including the current stream offset.
+/// Creates a copy of the stream with the same state as the original, including
+/// the current stream offset. This is useful for parallel processing or when
+/// you need to branch the stream processing.
+///
+/// ## Arguments
+/// - `self`: The stream to copy
+///
+/// ## Returns
+/// A new `Stream` object that is a copy of the original, or an error if copying fails.
+///
+/// ## Example
+/// ```zig
+/// const stream1 = try Stream.open(&db, .{});
+/// defer stream1.deinit();
+///
+/// try stream1.scan("data", scratch, .{ .onEvent = onMatch });
+/// const stream2 = try stream1.copy();
+/// defer stream2.deinit();
+///
+/// // Both streams now have the same state
+/// ```
 pub fn copy(self: *const Stream) !Stream {
     var stream_id: ?*hs.hs_stream_t = null;
 
@@ -72,6 +178,31 @@ pub fn copy(self: *const Stream) !Stream {
 ///
 /// The new stream will first be reset
 /// (reporting any EOD matches if a non-NULL @p onEvent callback handler is provided).
+///
+/// ## Arguments
+/// - `self`: The stream to copy
+/// - `to`: The stream to copy to
+/// - `scratch`: Scratch space allocated for the database
+/// - `opts`: Scan options including event handler and context
+///
+/// ## Returns
+/// An error if copying fails.
+///
+/// ## Example
+/// ```zig
+/// const stream = try db.openStream(.{});
+/// defer stream.deinit();
+///
+/// try stream.scan("foo", scratch, .{ .onEvent = onMatch });
+///
+/// const stream2 = try db.openStream(.{});
+/// defer stream2.deinit();
+///
+/// try stream2.scan("bar", scratch, .{ .onEvent = onMatch });
+///
+/// try stream.resetAndCopy(&stream2, scratch, .{ .onEvent = onMatch });
+/// ```
+///
 pub fn resetAndCopy(self: *const Stream, to: *Stream, scratch: Scratch, opts: ScanOptions) !void {
     const ctx: match.Context = .init(opts.onEvent, opts.context);
 
@@ -82,6 +213,22 @@ pub fn resetAndCopy(self: *const Stream, to: *Stream, scratch: Scratch, opts: Sc
 ///
 /// This compressed representation can be converted back into a stream state
 /// by using `expand` or `resetAndExpand`.
+///
+/// ## Arguments
+/// - `self`: The stream to compress
+/// - `allocator`: The allocator to use for the compressed stream
+///
+/// ## Returns
+/// A new `Stream` object, or an error if compression fails.
+///
+/// ## Example
+/// ```zig
+/// const stream = try db.openStream(.{});
+/// defer stream.deinit();
+///
+/// const compressed = try stream.compress(allocator);
+/// defer allocator.free(compressed);
+/// ```
 pub fn compress(self: *const Stream, allocator: std.mem.Allocator) ![]u8 {
     var sz: usize = 0;
 
@@ -101,6 +248,19 @@ pub fn compress(self: *const Stream, allocator: std.mem.Allocator) ![]u8 {
 }
 
 /// Decompresses a compressed representation created by `compress` into a new stream.
+///
+/// ## Arguments
+/// - `db`: The database to decompress the stream for
+/// - `buf`: The compressed stream to decompress
+///
+/// ## Returns
+/// A new `Stream` object, or an error if decompression fails.
+///
+/// ## Example
+/// ```zig
+/// const stream = try Stream.expand(&db, compressed);
+/// defer stream.deinit();
+/// ```
 pub fn expand(db: *const Database, buf: []const u8) !Stream {
     var stream_id: ?*hs.hs_stream_t = null;
 
@@ -114,6 +274,26 @@ pub fn expand(db: *const Database, buf: []const u8) !Stream {
 /// Decompresses a compressed representation created by `compress` on top of the stream.
 ///
 /// The stream will first be reset (reporting any EOD matches if a non-NULL `onEvent` callback handler is provided).
+///
+/// ## Arguments
+/// - `self`: The stream to decompress
+/// - `buf`: The compressed stream to decompress
+/// - `scratch`: Scratch space allocated for the database
+/// - `opts`: Scan options including event handler and context
+///
+/// ## Returns
+/// An error if decompression fails.
+///
+/// ## Example
+/// ```zig
+/// const stream = try db.openStream(.{});
+/// defer stream.deinit();
+///
+/// try stream.scan("foo", scratch, .{ .onEvent = onMatch });
+///
+/// try stream.resetAndExpand(compressed, scratch, .{ .onEvent = onMatch });
+/// defer stream.deinit();
+/// ```
 pub fn resetAndExpand(self: *Stream, buf: []const u8, scratch: Scratch, opts: ScanOptions) !void {
     const ctx: match.Context = .init(opts.onEvent, opts.context);
 
