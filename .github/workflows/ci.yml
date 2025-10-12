@@ -34,14 +34,13 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{matrix.zig}}
-      - run: zig build test --summary all
+      - run: zig build test -freference-trace=16 --summary all
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - run: |
-          sudo apt-get update
-          sudo apt-get install -yq libhyperscan-dev
+          brew install vectorscan pkg-config libpcap
       - run: |
           git config --global core.ignorecase false
       - uses: actions/checkout@v5
