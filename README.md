@@ -1,1 +1,1 @@
-# zig-hyperscan
+# zig-hyperscan [![CI](https://github.com/flier/zig-hyperscan/actions/workflows/ci.yml/badge.svg)](https://github.com/flier/zig-hyperscan/actions/workflows/ci.yml)
