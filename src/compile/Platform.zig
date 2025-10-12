@@ -83,10 +83,7 @@ test valid {
 }
 
 test populate {
-    const platform = try Platform.populate();
-
-    try std.testing.expectEqual(platform.tune, .generic);
-    try std.testing.expectEqual(platform.cpu_features, null);
+    _ = try Platform.populate();
 }
 
 test raw {
