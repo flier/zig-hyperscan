@@ -28,7 +28,7 @@ pub const Flags = packed struct(u32) {
     reserved: u21 = 0,
 
     pub fn parse(s: []const u8) !Flags {
-        if (std.mem.indexOfNone(u8, s, allChars)) |_| {
+        if (std.mem.indexOfNone(u8, s, all_chars)) |_| {
             return error.Invalid;
         }
 
@@ -201,8 +201,8 @@ pub const Flags = packed struct(u32) {
     }
 
     test "flag combinations - all flags" {
-        const flags = try parse(allChars);
-        try std.testing.expectEqualDeep(allFlags, flags);
+        const flags = try parse(all_chars);
+        try std.testing.expectEqualDeep(all_flags, flags);
         try std.testing.expectEqual(@as(u32, 2047), flags.value());
     }
 
@@ -268,7 +268,7 @@ pub const Flags = packed struct(u32) {
     test "format multiple flags" {
         try std.testing.expectFmt("is", "{f}", .{Flags{ .caseless = true, .dot_all = true }});
         try std.testing.expectFmt("ism", "{f}", .{Flags{ .caseless = true, .dot_all = true, .multiline = true }});
-        try std.testing.expectFmt(allChars, "{f}", .{allFlags});
+        try std.testing.expectFmt(all_chars, "{f}", .{all_flags});
     }
 
     test "format preserves order" {
@@ -296,7 +296,7 @@ pub const Flags = packed struct(u32) {
         try std.testing.expectEqual(@as(u32, 3), value(Flags{ .caseless = true, .dot_all = true }));
         try std.testing.expectEqual(@as(u32, 7), value(Flags{ .caseless = true, .dot_all = true, .multiline = true }));
         try std.testing.expectEqual(@as(u32, 1027), value(Flags{ .caseless = true, .dot_all = true, .quiet = true }));
-        try std.testing.expectEqual(@as(u32, 2047), value(allFlags));
+        try std.testing.expectEqual(@as(u32, 2047), value(all_flags));
     }
 
     test "round trip - parse then format" {
@@ -317,7 +317,7 @@ pub const Flags = packed struct(u32) {
             "ism",
             "HV8",
             "WPLCQ",
-            allChars,
+            all_chars,
         };
 
         for (test_cases) |input| {
@@ -351,7 +351,7 @@ pub const Flags = packed struct(u32) {
             Flags{ .quiet = true },
             Flags{ .caseless = true, .dot_all = true },
             Flags{ .caseless = true, .dot_all = true, .multiline = true },
-            allFlags,
+            all_flags,
         };
 
         for (test_flags) |input_flags| {
@@ -375,7 +375,7 @@ pub const Flags = packed struct(u32) {
 
     test "reserved bits" {
         // Test that reserved bits are always 0
-        const flags = allFlags;
+        const flags = all_flags;
         const flag_value = flags.value();
 
         // Reserved bits are the upper 21 bits (bits 11-31)
@@ -391,9 +391,9 @@ pub const Flags = packed struct(u32) {
     }
 };
 
-const allChars = "ismHV8WPLCQ";
+const all_chars = "ismHV8WPLCQ";
 
-const allFlags = Flags{
+const all_flags = Flags{
     .caseless = true,
     .dot_all = true,
     .multiline = true,

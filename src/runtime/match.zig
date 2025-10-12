@@ -32,26 +32,20 @@ pub const Event = struct {
     pub fn data(self: *const Event, comptime T: type) *T {
         return @ptrCast(@alignCast(self.context));
     }
-
-    pub fn setData(self: *const Event, comptime T: type, value: T) void {
-        const p: *T = @ptrCast(@alignCast(self.context));
-
-        p.* = value;
-    }
 };
 
 test Event {
-    const n: i32 = 123;
+    const num: i32 = 123;
 
     const evt = Event{
         .id = 0,
         .from = null,
         .to = 0,
-        .context = @constCast(&n),
+        .context = @constCast(&num),
     };
 
     try std.testing.expect(evt.isStartOffsetPastHorizon());
-    try std.testing.expectEqual(&n, evt.data(i32));
+    try std.testing.expectEqual(&num, evt.data(i32));
 }
 
 /// An error type for the event handler.

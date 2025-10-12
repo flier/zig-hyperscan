@@ -3,7 +3,7 @@ const std = @import("std");
 const hs = @cImport(@cInclude("hs/hs.h"));
 
 const match = @import("match.zig");
-const Scratch = @import("scratch.zig");
+const Scratch = @import("Scratch.zig");
 
 const Pattern = @import("../compile.zig").Pattern;
 const Database = @import("../common.zig").Database;
@@ -86,7 +86,7 @@ test scanBlock {
     try scanBlock(&db, "hello foobar", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,
@@ -108,7 +108,7 @@ test "scanBlock no matches" {
     try scanBlock(&db, "hello world", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -130,7 +130,7 @@ test "scanBlock empty data" {
     try scanBlock(&db, "", scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -217,7 +217,7 @@ test scanVector {
     try scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,
@@ -244,7 +244,7 @@ test "scanVector no matches" {
     try scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -268,7 +268,7 @@ test "scanVector empty data" {
     try scanVector(&db, data[0..data.len], scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -369,7 +369,7 @@ test "scan with different pattern types" {
         try scanBlock(&db, "hello world", scratch, .{
             .onEvent = struct {
                 fn handler(evt: match.Event) !void {
-                    evt.setData(bool, true);
+                    evt.data(bool).* = true;
                 }
             }.handler,
             .context = &match_found,
@@ -392,7 +392,7 @@ test "scan with different pattern types" {
         try scanBlock(&db, "Contact us at test@example.com for more info", scratch, .{
             .onEvent = struct {
                 fn handler(evt: match.Event) !void {
-                    evt.setData(bool, true);
+                    evt.data(bool).* = true;
                 }
             }.handler,
             .context = &match_found,
@@ -419,7 +419,7 @@ test scanStream {
     try scanStream(&db, &reader, scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,
@@ -443,7 +443,7 @@ test "scanStream no matches" {
     try scanStream(&db, &reader, scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -467,7 +467,7 @@ test "scanStream empty data" {
     try scanStream(&db, &reader, scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -566,7 +566,7 @@ test "scanStream large data" {
     try scanStream(&db, &reader, scratch, .{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,

@@ -8,6 +8,7 @@ const hs = @cImport(@cInclude("hs/hs.h"));
 const check = @import("../common.zig").check;
 
 /// Tuning flags
+// zlinter-disable-next-line field_ordering
 pub const Tune = enum(u32) {
     /// Generic
     generic = hs.HS_TUNE_FAMILY_GENERIC,
@@ -55,7 +56,7 @@ pub fn valid() !void {
 
 /// Populates the platform information based on the current host.
 pub fn populate() !Platform {
-    var platform: hs.hs_platform_info_t = undefined;
+    var platform: hs.hs_platform_info_t = .{};
 
     try check(hs.hs_populate_platform(&platform));
 

@@ -7,11 +7,11 @@ const hs = @cImport(@cInclude("hs/hs.h"));
 const Database = @import("common.zig").Database;
 const MatchEvent = @import("runtime.zig").MatchEvent;
 
-pub const Pattern = @import("compile/pattern.zig");
-pub const Platform = @import("compile/platform.zig");
+pub const Pattern = @import("compile/Pattern.zig");
+pub const Platform = @import("compile/Platform.zig");
 pub const Flags = @import("compile/flags.zig").Flags;
-pub const ExprExt = @import("compile/expr_ext.zig");
-pub const ExprInfo = @import("compile/expr_info.zig");
+pub const ExprExt = @import("compile/ExprExt.zig");
+pub const ExprInfo = @import("compile/ExprInfo.zig");
 
 const check = @import("common.zig").check;
 
@@ -97,7 +97,7 @@ pub fn compileMulti(patterns: []const Pattern, opts: Options) !Database {
     var ids: std.ArrayList(u32) = try .initCapacity(allocator, patterns.len);
     var lens: std.ArrayList(usize) = try .initCapacity(allocator, patterns.len);
     var exts: std.ArrayList(hs.hs_expr_ext_t) = try .initCapacity(allocator, patterns.len);
-    var exts_ptrs: std.ArrayList(*const hs.hs_expr_ext_t) = try .initCapacity(allocator, patterns.len);
+    var exts_ptrs: std.ArrayList(?*const hs.hs_expr_ext_t) = try .initCapacity(allocator, patterns.len);
 
     defer exprs.deinit(allocator);
     defer flags.deinit(allocator);
@@ -113,8 +113,11 @@ pub fn compileMulti(patterns: []const Pattern, opts: Options) !Database {
         try flags.append(allocator, pattern.flags.value());
         try ids.append(allocator, pattern.id orelse @intCast(i));
         try lens.append(allocator, pattern.expr.len);
-        try exts.append(allocator, if (pattern.ext) |ext| @bitCast(ext.raw()) else .{});
-        try exts_ptrs.append(allocator, &exts.items[exts.items.len - 1]);
+
+        if (pattern.ext) |ext| {
+            try exts.append(allocator, @bitCast(ext.raw()));
+        }
+        try exts_ptrs.append(allocator, if (pattern.ext) |_| &exts.items[exts.items.len - 1] else null);
 
         has_exts |= pattern.ext != null;
     }
@@ -665,16 +668,6 @@ test "freeCompileError with multi-pattern errors" {
     try std.testing.expectError(error.CompileError, compileMulti(&malformed_patterns, .{}));
 }
 
-test "freeCompileError error message validation" {
-    // Test that error messages are properly logged
-    const invalid_pattern: Pattern = try .parse("(");
-
-    // TODO: Capture log output to verify error messages are logged
-    // Note: This is a basic test - in a real implementation you might want to
-    // capture and verify the actual log output
-    try std.testing.expectError(error.CompileError, compile(&invalid_pattern, .{}));
-}
-
 // Integration tests
 
 test "integration - complex workflow" {
@@ -705,17 +698,17 @@ test "integration - complex workflow" {
 }
 
 test "integration - literal vs regex compilation" {
-    const p: Pattern = try .parse("test123");
+    const pattern: Pattern = try .parse("test123");
 
     // Test literal compilation
     {
-        const db = try compile(&p, .{ .literal = true });
+        const db = try compile(&pattern, .{ .literal = true });
         defer db.deinit();
     }
 
     // Test regex compilation
     {
-        const db = try compile(&p, .{});
+        const db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }
@@ -801,8 +794,8 @@ test "edge cases - unicode patterns" {
     };
 
     for (unicode_patterns) |s| {
-        const p: Pattern = try .parse(s);
-        const db = try compile(&p, .{});
+        const pattern: Pattern = try .parse(s);
+        const db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }
@@ -817,8 +810,8 @@ test "edge cases - special characters" {
     };
 
     for (special_patterns) |s| {
-        const p: Pattern = try .parse(s);
-        const db = try compile(&p, .{});
+        const pattern: Pattern = try .parse(s);
+        const db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }
@@ -837,8 +830,8 @@ test "edge cases - extreme quantifiers" {
     };
 
     for (patterns) |s| {
-        const p: Pattern = try .parse(s);
-        const db = try compile(&p, .{});
+        const pattern: Pattern = try .parse(s);
+        const db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }

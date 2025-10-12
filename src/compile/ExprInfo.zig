@@ -1,20 +1,20 @@
-//! A type containing information related to an expression that is returned by `expre_info`.
+//! A type containing information related to an expression.
 
 const std = @import("std");
 
 const hs = @cImport(@cInclude("hs/hs.h"));
 
 const Flags = @import("flags.zig").Flags;
-const Ext = @import("expr_ext.zig");
+const ExprExt = @import("ExprExt.zig");
 
 const check = @import("../common.zig").check;
 const freeCompileError = @import("../compile.zig").freeCompileError;
 
 pub const MaxLength = union(enum) {
-    /// The maximum length in bytes of a match for the pattern.
-    value: u32,
     /// The pattern has an unbounded maximum length.
     unbounded,
+    /// The maximum length in bytes of a match for the pattern.
+    value: u32,
 
     fn init(n: c_uint) MaxLength {
         return if (n != std.math.maxInt(c_uint)) .{ .value = n } else .unbounded;
@@ -37,7 +37,7 @@ matches_only_at_eod: bool = false,
 const Info = @This();
 
 /// Utility function providing information about a regular expression.
-pub fn analysis(expr: []const u8, flags: Flags, ext: ?Ext) !Info {
+pub fn analysis(expr: []const u8, flags: Flags, ext: ?ExprExt) !Info {
     var expr_info: ?*hs.hs_expr_info_t = null;
     var err: ?*hs.hs_compile_error_t = null;
 

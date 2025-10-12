@@ -2,8 +2,8 @@
 
 const std = @import("std");
 
-pub const Stream = @import("runtime/stream.zig");
-pub const Scratch = @import("runtime/scratch.zig");
+pub const Scratch = @import("runtime/Scratch.zig");
+pub const Stream = @import("runtime/Stream.zig");
 
 const match = @import("runtime/match.zig");
 

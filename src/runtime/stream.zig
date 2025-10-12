@@ -10,7 +10,7 @@ const Pattern = @import("../compile.zig").Pattern;
 const match = @import("match.zig");
 
 const ScanOptions = @import("scan.zig").Options;
-const Scratch = @import("scratch.zig");
+const Scratch = @import("Scratch.zig");
 
 const check = @import("../common.zig").check;
 
@@ -160,7 +160,7 @@ test scan {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,
@@ -204,7 +204,7 @@ test close {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,
@@ -251,7 +251,7 @@ test reset {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,
@@ -304,7 +304,7 @@ test copy {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,
@@ -360,7 +360,7 @@ test resetAndCopy {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                evt.setData(u64, evt.to);
+                evt.data(u64).* = evt.to;
             }
         }.handler,
         .context = &to,

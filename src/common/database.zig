@@ -2,10 +2,10 @@
 
 const std = @import("std");
 
-const cString = @cImport(@cInclude("string.h"));
+const cstring = @cImport(@cInclude("string.h"));
 const hs = @cImport(@cInclude("hs/hs.h"));
 
-const Serialized = @import("serialized.zig");
+const Serialized = @import("Serialized.zig");
 
 const compile_ = @import("../compile.zig");
 
@@ -61,7 +61,7 @@ pub fn info(self: *const Database, allocator: std.mem.Allocator) ![]const u8 {
     defer std.c.free(db_info);
 
     return if (db_info) |p|
-        allocator.dupe(u8, p[0..cString.strlen(p)])
+        allocator.dupe(u8, p[0..cstring.strlen(p)])
     else
         error.UnknownError;
 }
@@ -213,7 +213,7 @@ test scanBlock {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: runtime.MatchEvent) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -237,7 +237,7 @@ test scanVector {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: runtime.MatchEvent) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -311,7 +311,7 @@ test "database with literal mode" {
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: runtime.MatchEvent) !void {
-                evt.setData(bool, true);
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,

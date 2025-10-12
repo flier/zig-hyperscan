@@ -1,4 +1,5 @@
 const std = @import("std");
+
 const hs = @import("hyperscan");
 
 const usage =
@@ -91,7 +92,7 @@ const Options = struct {
 };
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}).init;
     const allocator = gpa.allocator();
     defer {
         _ = gpa.deinit();
@@ -130,20 +131,22 @@ pub fn main() !void {
 
     // Open input file
 
-    var f = try std.fs.cwd().openFile(opts.input_file, .{});
-    defer f.close();
+    var input = try std.fs.cwd().openFile(opts.input_file, .{});
+    defer input.close();
 
     // Scan input file
 
     if (opts.stream) {
-        try scanStream(f, &opts.patterns, db, scratch);
+        try scanStream(input, &opts.patterns, db, scratch);
     } else {
-        try scanBlock(allocator, f, &opts.patterns, db, scratch);
+        try scanBlock(allocator, input, &opts.patterns, db, scratch);
     }
 }
 
 fn scanBlock(allocator: std.mem.Allocator, f: std.fs.File, patterns: *std.ArrayList(hs.Pattern), db: hs.Database, scratch: hs.Scratch) !void {
-    const data = try f.readToEndAlloc(allocator, std.math.maxInt(usize));
+    var buf: [std.heap.pageSize()]u8 = undefined;
+    var reader = f.reader(&buf);
+    const data = try reader.interface.allocRemaining(allocator, .unlimited);
     defer allocator.free(data);
 
     std.log.debug("Data size: {d} bytes", .{data.len});

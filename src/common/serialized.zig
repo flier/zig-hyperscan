@@ -1,13 +1,16 @@
 const std = @import("std");
 
-const cString = @cImport(@cInclude("string.h"));
+const cstring = @cImport(@cInclude("string.h"));
 const hs = @cImport(@cInclude("hs/hs.h"));
 
 const check = @import("../common.zig").check;
-const Database = @import("database.zig").Database;
-const Pattern = @import("../compile/pattern.zig");
+const Database = @import("Database.zig").Database;
+const Pattern = @import("../compile.zig").Pattern;
+
 const runtime = @import("../runtime.zig");
-const ScanOptions = @import("../runtime.zig").ScanOptions;
+
+const MatchEvent = runtime.MatchEvent;
+const ScanOptions = runtime.ScanOptions;
 
 buf: []u8,
 owned: bool = false,
@@ -67,7 +70,7 @@ pub fn databaseInfo(self: *const Serialized, allocator: std.mem.Allocator) ![]co
     defer std.c.free(db_info);
 
     return if (db_info) |p|
-        allocator.dupe(u8, p[0..cString.strlen(p)])
+        allocator.dupe(u8, p[0..cstring.strlen(p)])
     else
         error.UnknownError;
 }
@@ -138,7 +141,7 @@ test "serialize and deserialize round trip" {
 
     const opts1 = ScanOptions{
         .onEvent = struct {
-            fn handler(evt: runtime.MatchEvent) !void {
+            fn handler(evt: MatchEvent) !void {
                 evt.data(u32).* += 1;
             }
         }.handler,
@@ -147,7 +150,7 @@ test "serialize and deserialize round trip" {
 
     const opts2 = ScanOptions{
         .onEvent = struct {
-            fn handler(evt: runtime.MatchEvent) !void {
+            fn handler(evt: MatchEvent) !void {
                 evt.data(u32).* += 1;
             }
         }.handler,
@@ -262,7 +265,7 @@ test "serialize with multiple patterns" {
     var match_count: u32 = 0;
     const opts = ScanOptions{
         .onEvent = struct {
-            fn handler(evt: runtime.MatchEvent) !void {
+            fn handler(evt: MatchEvent) !void {
                 evt.data(u32).* += 1;
             }
         }.handler,
@@ -291,8 +294,8 @@ test "serialize with literal mode" {
     var match_found = false;
     const opts = ScanOptions{
         .onEvent = struct {
-            fn handler(evt: runtime.MatchEvent) !void {
-                evt.setData(bool, true);
+            fn handler(evt: MatchEvent) !void {
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,
@@ -357,7 +360,7 @@ test "serialize with complex patterns" {
     var match_count: u32 = 0;
     const opts = ScanOptions{
         .onEvent = struct {
-            fn handler(evt: runtime.MatchEvent) !void {
+            fn handler(evt: MatchEvent) !void {
                 evt.data(u32).* += 1;
             }
         }.handler,
@@ -436,8 +439,8 @@ test "serialize with single character patterns" {
     var match_found = false;
     const opts = ScanOptions{
         .onEvent = struct {
-            fn handler(evt: runtime.MatchEvent) !void {
-                evt.setData(bool, true);
+            fn handler(evt: MatchEvent) !void {
+                evt.data(bool).* = true;
             }
         }.handler,
         .context = &match_found,

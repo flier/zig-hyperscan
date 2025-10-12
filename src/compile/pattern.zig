@@ -2,11 +2,9 @@
 
 const std = @import("std");
 
-const hs = @cImport(@cInclude("hs/hs.h"));
-
 const Flags = @import("flags.zig").Flags;
-const ExprExt = @import("expr_ext.zig");
-const ExprInfo = @import("expr_info.zig");
+const ExprExt = @import("ExprExt.zig");
+const ExprInfo = @import("ExprInfo.zig");
 
 const check = @import("../common.zig").check;
 
@@ -42,17 +40,17 @@ pub fn withExt(self: *const Pattern, ext: ExprExt) Pattern {
 /// Parse a pattern from a string.
 pub fn parse(s: []const u8) !Pattern {
     if (std.mem.indexOf(u8, s, ":/")) |start| {
-        if (std.fmt.parseInt(u32, s[0..start], 10)) |id| {
+        if (start > 0 and std.mem.indexOfNone(u8, s[0..start], "0123456789") == null) {
             if (std.mem.lastIndexOfScalar(u8, s, '/')) |end| {
                 if (start + 1 < end) {
                     return .{
                         .expr = s[start + 2 .. end],
                         .flags = try .parse(s[end + 1 ..]),
-                        .id = id,
+                        .id = try std.fmt.parseInt(u32, s[0..start], 10),
                     };
                 }
             }
-        } else |_| {}
+        }
     }
 
     if (std.mem.startsWith(u8, s, "/") & std.mem.containsAtLeastScalar(u8, s, 2, '/')) {
