@@ -25,6 +25,7 @@ pub const Database = @This();
 
 ptr: *const hs.hs_database_t,
 
+/// Initialize a database.
 pub fn init(db: *const hs.hs_database_t) Database {
     return .{
         .ptr = db,

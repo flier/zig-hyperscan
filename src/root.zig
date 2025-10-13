@@ -15,6 +15,7 @@ const common = @import("common.zig");
 pub const Error = common.Error;
 pub const Database = common.Database;
 pub const Serialized = common.Serialized;
+pub const Regex = common.Regex;
 
 // The Hyperscan compiler API definition.
 

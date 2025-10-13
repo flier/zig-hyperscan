@@ -17,12 +17,14 @@ owned: bool = false,
 
 const Serialized = @This();
 
+/// Initialize a serialized database.
 pub fn init(buf: []u8) Serialized {
     return .{
         .buf = buf,
     };
 }
 
+/// Deinitialize a serialized database.
 pub fn deinit(self: *const Serialized) void {
     if (self.owned) {
         std.c.free(self.buf.ptr);
