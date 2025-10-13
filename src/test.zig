@@ -82,8 +82,8 @@ test Regex {
         std.testing.allocator,
         "hello helo",
         struct {
-            fn upper(str: []const u8) ?[]const u8 {
-                return std.ascii.allocUpperString(std.testing.allocator, str) catch return null;
+            fn upper(allocator: std.mem.Allocator, str: []const u8) ?[]const u8 {
+                return std.ascii.allocUpperString(allocator, str) catch return null;
             }
         }.upper,
     );

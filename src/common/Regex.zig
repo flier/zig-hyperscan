@@ -220,6 +220,10 @@ pub fn findAll(self: *const Regex, allocator: std.mem.Allocator, data: []const u
 /// ## Errors
 /// Allocation or scanning errors.
 pub fn findAllIndex(self: *const Regex, allocator: std.mem.Allocator, data: []const u8, opts: FindOptions) !?[]Match {
+    var arena: std.heap.ArenaAllocator = .init(allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
     const Context = struct {
         allocator: std.mem.Allocator,
         matches: std.ArrayList(Match),
@@ -227,12 +231,10 @@ pub fn findAllIndex(self: *const Regex, allocator: std.mem.Allocator, data: []co
     };
 
     var context: Context = .{
-        .allocator = allocator,
-        .matches = try .initCapacity(allocator, 4),
+        .allocator = alloc,
+        .matches = try .initCapacity(alloc, 4),
         .longest = opts.longest,
     };
-
-    defer context.matches.deinit(allocator);
 
     const scratch = try self.db.allocScratch();
     defer scratch.deinit();
@@ -260,7 +262,7 @@ pub fn findAllIndex(self: *const Regex, allocator: std.mem.Allocator, data: []co
         .context = &context,
     });
 
-    return if (context.matches.items.len > 0) try context.matches.toOwnedSlice(allocator) else null;
+    return if (context.matches.items.len > 0) try allocator.dupe(Match, context.matches.items) else null;
 }
 
 /// Replaces all matches in `data` with `replacement` according to `opts`.
@@ -274,29 +276,30 @@ pub fn findAllIndex(self: *const Regex, allocator: std.mem.Allocator, data: []co
 /// ## Errors
 /// Allocation or scanning errors.
 pub fn replace(self: *const Regex, allocator: std.mem.Allocator, data: []const u8, replacement: []const u8) ![]const u8 {
-    if (try self.findAllIndex(allocator, data, .{ .longest = true })) |matches| {
-        defer allocator.free(matches);
+    var arena: std.heap.ArenaAllocator = .init(allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
 
-        var replaced: std.ArrayList(u8) = try .initCapacity(allocator, data.len);
-        defer replaced.deinit(allocator);
+    if (try self.findAllIndex(alloc, data, .{ .longest = true })) |matches| {
+        var replaced: std.ArrayList(u8) = try .initCapacity(alloc, data.len);
 
         var last: u64 = 0;
 
         for (matches) |m| {
             if (m.from > last) {
-                try replaced.appendSlice(allocator, data[last..m.from]);
+                try replaced.appendSlice(alloc, data[last..m.from]);
             }
 
-            try replaced.appendSlice(allocator, replacement);
+            try replaced.appendSlice(alloc, replacement);
 
             last = m.to;
         }
 
         if (last < data.len) {
-            try replaced.appendSlice(allocator, data[last..]);
+            try replaced.appendSlice(alloc, data[last..]);
         }
 
-        return replaced.toOwnedSlice(allocator);
+        return allocator.dupe(u8, replaced.items);
     }
 
     return allocator.dupe(u8, data);
@@ -309,7 +312,7 @@ pub fn replace(self: *const Regex, allocator: std.mem.Allocator, data: []const u
 ///
 /// ## Ownership
 /// The caller (`replaceFn`) will free any non-null returned slice after copying its contents.
-pub const ReplaceFn = fn ([]const u8) ?[]const u8;
+pub const ReplaceFn = fn (std.mem.Allocator, []const u8) ?[]const u8;
 
 /// Replaces matches by invoking `f` for each match and splicing the result.
 ///
@@ -325,35 +328,34 @@ pub const ReplaceFn = fn ([]const u8) ?[]const u8;
 /// ## Errors
 /// Allocation or scanning errors.
 pub fn replaceFn(self: *const Regex, allocator: std.mem.Allocator, data: []const u8, f: ReplaceFn) ![]const u8 {
-    if (try self.findAllIndex(allocator, data, .{ .longest = true })) |matches| {
-        defer allocator.free(matches);
+    var arena: std.heap.ArenaAllocator = .init(allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
 
-        var replaced: std.ArrayList(u8) = try .initCapacity(allocator, data.len);
-        defer replaced.deinit(allocator);
+    if (try self.findAllIndex(alloc, data, .{ .longest = true })) |matches| {
+        var replaced: std.ArrayList(u8) = try .initCapacity(alloc, data.len);
 
         var last: usize = 0;
 
         for (matches) |m| {
             if (m.from > last) {
-                try replaced.appendSlice(allocator, data[last..m.from]);
+                try replaced.appendSlice(alloc, data[last..m.from]);
             }
 
-            if (f(data[m.from..m.to])) |replacement| {
-                defer allocator.free(replacement);
-
-                try replaced.appendSlice(allocator, replacement);
+            if (f(alloc, data[m.from..m.to])) |replacement| {
+                try replaced.appendSlice(alloc, replacement);
             } else {
-                try replaced.appendSlice(allocator, data[m.from..m.to]);
+                try replaced.appendSlice(alloc, data[m.from..m.to]);
             }
 
             last = m.to;
         }
 
         if (last < data.len) {
-            try replaced.appendSlice(allocator, data[last..]);
+            try replaced.appendSlice(alloc, data[last..]);
         }
 
-        return replaced.toOwnedSlice(allocator);
+        return allocator.dupe(u8, replaced.items);
     }
 
     return allocator.dupe(u8, data);
@@ -370,31 +372,32 @@ pub fn replaceFn(self: *const Regex, allocator: std.mem.Allocator, data: []const
 /// ## Errors
 /// Allocation or scanning errors.
 pub fn split(self: *const Regex, allocator: std.mem.Allocator, data: []const u8) ![][]const u8 {
-    var parts: std.ArrayList([]const u8) = try .initCapacity(allocator, 4);
-    defer parts.deinit(allocator);
+    var arena: std.heap.ArenaAllocator = .init(allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
 
-    if (try self.findAllIndex(allocator, data, .{ .longest = true })) |matches| {
-        defer allocator.free(matches);
+    var parts: std.ArrayList([]const u8) = try .initCapacity(alloc, 4);
 
+    if (try self.findAllIndex(alloc, data, .{ .longest = true })) |matches| {
         var last: usize = 0;
 
         for (matches) |m| {
-            try parts.append(allocator, if (m.from > last) data[last..m.from] else "");
+            try parts.append(alloc, if (m.from > last) data[last..m.from] else "");
 
             last = m.to;
         }
 
         if (last < data.len) {
-            try parts.append(allocator, data[last..]);
+            try parts.append(alloc, data[last..]);
         }
     }
 
     if (parts.items.len == 0) {
         // No delimiter matched; return the original input as a single slice
-        try parts.append(allocator, data);
+        try parts.append(alloc, data);
     }
 
-    return parts.toOwnedSlice(allocator);
+    return allocator.dupe([]const u8, parts.items);
 }
 
 // Unit Tests
@@ -552,8 +555,8 @@ test replaceFn {
         std.testing.allocator,
         "hello world helo helo",
         struct {
-            fn replace(data: []const u8) ?[]const u8 {
-                return std.ascii.allocUpperString(std.testing.allocator, data) catch return null;
+            fn replace(allocator: std.mem.Allocator, data: []const u8) ?[]const u8 {
+                return std.ascii.allocUpperString(allocator, data) catch return null;
             }
         }.replace,
     );
@@ -628,7 +631,7 @@ test "replaceFn returns null keeps original" {
         std.testing.allocator,
         input,
         struct {
-            fn keep(_: []const u8) ?[]const u8 {
+            fn keep(_: std.mem.Allocator, _: []const u8) ?[]const u8 {
                 return null;
             }
         }.keep,

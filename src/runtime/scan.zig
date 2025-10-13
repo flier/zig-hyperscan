@@ -35,16 +35,16 @@ pub fn scanBlock(db: *const Database, data: []const u8, scratch: Scratch, opts: 
 
 /// The vectored regular expression scanner.
 pub fn scanVector(db: *const Database, data: []const std.posix.iovec_const, scratch: Scratch, opts: Options) !void {
-    const allocator = opts.allocator orelse std.heap.c_allocator;
-    var ptrs = try std.ArrayList(*const u8).initCapacity(allocator, data.len);
-    var lens = try std.ArrayList(u32).initCapacity(allocator, data.len);
+    var arena: std.heap.ArenaAllocator = .init(opts.allocator orelse std.heap.c_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
 
-    defer ptrs.deinit(allocator);
-    defer lens.deinit(allocator);
+    var ptrs = try std.ArrayList(*const u8).initCapacity(alloc, data.len);
+    var lens = try std.ArrayList(u32).initCapacity(alloc, data.len);
 
     for (data) |buf| {
-        try ptrs.append(allocator, @ptrCast(buf.base));
-        try lens.append(allocator, @intCast(buf.len));
+        try ptrs.append(alloc, @ptrCast(buf.base));
+        try lens.append(alloc, @intCast(buf.len));
     }
 
     const ctx: match.Context = .init(opts.onEvent, opts.context);

@@ -91,33 +91,29 @@ pub fn compile(pattern: *const Pattern, opts: Options) !Database {
 
 /// The multiple regular expression compiler.
 pub fn compileMulti(patterns: []const Pattern, opts: Options) !Database {
-    const allocator = opts.allocator orelse std.heap.c_allocator;
-    var exprs: std.ArrayList([*]const u8) = try .initCapacity(allocator, patterns.len);
-    var flags: std.ArrayList(u32) = try .initCapacity(allocator, patterns.len);
-    var ids: std.ArrayList(u32) = try .initCapacity(allocator, patterns.len);
-    var lens: std.ArrayList(usize) = try .initCapacity(allocator, patterns.len);
-    var exts: std.ArrayList(hs.hs_expr_ext_t) = try .initCapacity(allocator, patterns.len);
-    var exts_ptrs: std.ArrayList(?*const hs.hs_expr_ext_t) = try .initCapacity(allocator, patterns.len);
+    var arena: std.heap.ArenaAllocator = .init(opts.allocator orelse std.heap.c_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
 
-    defer exprs.deinit(allocator);
-    defer flags.deinit(allocator);
-    defer ids.deinit(allocator);
-    defer lens.deinit(allocator);
-    defer exts.deinit(allocator);
-    defer exts_ptrs.deinit(allocator);
+    var exprs: std.ArrayList([*]const u8) = try .initCapacity(alloc, patterns.len);
+    var flags: std.ArrayList(u32) = try .initCapacity(alloc, patterns.len);
+    var ids: std.ArrayList(u32) = try .initCapacity(alloc, patterns.len);
+    var lens: std.ArrayList(usize) = try .initCapacity(alloc, patterns.len);
+    var exts: std.ArrayList(hs.hs_expr_ext_t) = try .initCapacity(alloc, patterns.len);
+    var exts_ptrs: std.ArrayList(?*const hs.hs_expr_ext_t) = try .initCapacity(alloc, patterns.len);
 
     var has_exts = false;
 
     for (patterns, 0..) |pattern, i| {
-        try exprs.append(allocator, pattern.expr.ptr);
-        try flags.append(allocator, pattern.flags.value());
-        try ids.append(allocator, pattern.id orelse @intCast(i));
-        try lens.append(allocator, pattern.expr.len);
+        try exprs.append(alloc, pattern.expr.ptr);
+        try flags.append(alloc, pattern.flags.value());
+        try ids.append(alloc, pattern.id orelse @intCast(i));
+        try lens.append(alloc, pattern.expr.len);
 
         if (pattern.ext) |ext| {
-            try exts.append(allocator, @bitCast(ext.raw()));
+            try exts.append(alloc, @bitCast(ext.raw()));
         }
-        try exts_ptrs.append(allocator, if (pattern.ext) |_| &exts.items[exts.items.len - 1] else null);
+        try exts_ptrs.append(alloc, if (pattern.ext) |_| &exts.items[exts.items.len - 1] else null);
 
         has_exts |= pattern.ext != null;
     }
