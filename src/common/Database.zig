@@ -91,8 +91,8 @@ pub fn serialize(self: *const Database) !Serialized {
 /// A compiled `Database` that can be used for scanning, or an error if compilation fails.
 ///
 /// # Errors
+/// - `error.DbModeError`: If the database mode is invalid
 /// - `error.CompileError`: If the pattern contains invalid regex syntax
-/// - `error.OutOfMemory`: If insufficient memory is available
 ///
 /// ## Example
 /// ```zig

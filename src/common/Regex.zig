@@ -27,6 +27,9 @@ const Regex = @This();
 /// ## Ownership
 /// call `deinit()` to release resources when done.
 ///
+/// ## Notes
+/// Scratch space is allocated lazily per-scan and freed after each scan.
+///
 /// ## Example
 /// ```zig
 /// const regex = try Regex.compile("hello");
@@ -45,11 +48,12 @@ pub fn compile(expr: []const u8) !Regex {
 /// Deinitializes a `Regex` object.
 ///
 /// ## Effects
-/// Frees the underlying Hyperscan database and scratch resources.
+/// Frees the underlying Hyperscan database.
 pub fn deinit(self: *const Regex) void {
     self.db.deinit();
 }
 
+/// Options for finding matches.
 pub const FindOptions = struct {
     /// Whether to match the longest match.
     ///
@@ -67,7 +71,7 @@ pub const FindOptions = struct {
     /// // => "ab"
     ///
     /// regex.find(.{ .longest = true }, "aabb");
-    /// // => "a"
+    /// // => "aab"
     longest: bool = false,
 };
 
@@ -103,7 +107,7 @@ pub fn find(self: *const Regex, data: []const u8, opts: FindOptions) !?[]const u
 /// A match.
 pub const Match = struct {
     /// The id of the match.
-    id: u32,
+    id: u32 = 0,
     /// The start index of the match.
     from: u64,
     /// The end index of the match.
@@ -464,6 +468,44 @@ test findAllIndex {
             .{ .id = 0, .from = 0, .to = 5 },
             .{ .id = 0, .from = 12, .to = 16 },
             .{ .id = 0, .from = 17, .to = 21 },
+        };
+
+        try std.testing.expectEqualDeep(&expected, spans);
+    } else {
+        return error.NoMatched;
+    }
+}
+
+test "findAllIndex with longest option (disambiguate same start)" {
+    const regex = try Regex.compile("a(|b)");
+    defer regex.deinit();
+
+    if (try regex.findAllIndex(std.testing.allocator, "ab a abb", .{ .longest = true })) |spans_longest| {
+        defer std.testing.allocator.free(spans_longest);
+
+        const expected_longest = [_]Match{
+            .{ .id = 0, .from = 0, .to = 2 }, // "ab"
+            .{ .id = 0, .from = 3, .to = 4 }, // "a"
+            .{ .id = 0, .from = 5, .to = 7 }, // "ab" from "abb"
+        };
+
+        try std.testing.expectEqualDeep(&expected_longest, spans_longest);
+    } else {
+        return error.NoMatched;
+    }
+}
+
+test "findAllIndex default without ambiguity" {
+    const regex = try Regex.compile("ab+");
+    defer regex.deinit();
+
+    if (try regex.findAllIndex(std.testing.allocator, "ab a abb", .{})) |spans| {
+        defer std.testing.allocator.free(spans);
+
+        const expected = [_]Match{
+            .{ .id = 0, .from = 0, .to = 2 }, // "ab"
+            .{ .id = 0, .from = 5, .to = 7 }, // "ab"
+            .{ .id = 0, .from = 5, .to = 8 }, // "abb"
         };
 
         try std.testing.expectEqualDeep(&expected, spans);
