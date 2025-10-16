@@ -62,13 +62,13 @@ pub const Event = struct {
 };
 
 test Event {
-    const num: i32 = 123;
+    var num: i32 = 123;
 
     const evt = Event{
         .id = 0,
         .from = null,
         .to = 0,
-        .context = @constCast(&num),
+        .context = &num,
     };
 
     try std.testing.expect(evt.isStartOffsetPastHorizon());
@@ -172,15 +172,15 @@ fn onEvent(id: c_uint, from: c_ulonglong, to: c_ulonglong, flags: c_uint, contex
 // Unit tests
 
 test onEvent {
-    const empty: Context = .init(null, null);
+    var empty: Context = .init(null, null);
 
-    try std.testing.expectEqual(0, onEvent(0, 0, 0, 0, @constCast(&empty)));
+    try std.testing.expectEqual(0, onEvent(0, 0, 0, 0, &empty));
 
-    const terminate: Context = .init(struct {
+    var terminate: Context = .init(struct {
         fn handler(_: Event) !void {
             return error.Terminate;
         }
     }.handler, null);
 
-    try std.testing.expectEqual(-1, onEvent(0, 0, 0, 0, @constCast(&terminate)));
+    try std.testing.expectEqual(-1, onEvent(0, 0, 0, 0, &terminate));
 }

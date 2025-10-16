@@ -28,9 +28,9 @@ pub const Options = struct {
 
 /// The block (non-streaming) regular expression scanner.
 pub fn scanBlock(db: *const Database, data: []const u8, scratch: Scratch, opts: Options) !void {
-    const ctx: match.Context = .init(opts.onEvent, opts.context);
+    var ctx: match.Context = .init(opts.onEvent, opts.context);
 
-    return check(hs.hs_scan(@ptrCast(db.ptr), data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
+    return check(hs.hs_scan(@ptrCast(db.ptr), data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, &ctx));
 }
 
 /// The vectored regular expression scanner.
@@ -47,9 +47,9 @@ pub fn scanVector(db: *const Database, data: []const std.posix.iovec_const, scra
         try lens.append(alloc, @intCast(buf.len));
     }
 
-    const ctx: match.Context = .init(opts.onEvent, opts.context);
+    var ctx: match.Context = .init(opts.onEvent, opts.context);
 
-    return check(hs.hs_scan_vector(@ptrCast(db.ptr), ptrs.items.ptr, lens.items.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
+    return check(hs.hs_scan_vector(@ptrCast(db.ptr), ptrs.items.ptr, lens.items.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, &ctx));
 }
 
 /// The streaming regular expression scanner.
@@ -75,10 +75,10 @@ pub fn scanStream(db: *const Database, reader: *std.Io.Reader, scratch: Scratch,
 
 test scanBlock {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{});
+    var db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var to: u64 = 0;
@@ -97,10 +97,10 @@ test scanBlock {
 
 test "scanBlock no matches" {
     const pattern: Pattern = try .parse("xyz");
-    const db: Database = try .compile(&pattern, .{});
+    var db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_found = false;
@@ -119,10 +119,10 @@ test "scanBlock no matches" {
 
 test "scanBlock empty data" {
     const pattern: Pattern = try .parse("hello");
-    const db: Database = try .compile(&pattern, .{});
+    var db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_found = false;
@@ -141,10 +141,10 @@ test "scanBlock empty data" {
 
 test "scanBlock multiple matches" {
     const pattern: Pattern = try .parse("hello");
-    const db: Database = try .compile(&pattern, .{});
+    var db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var matches: std.ArrayList(u64) = try .initCapacity(std.testing.allocator, 10);
@@ -170,10 +170,10 @@ test "scanBlock multiple matches" {
 
 test "scanBlock without callback" {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{});
+    var db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Should not crash when no callback is provided
@@ -182,10 +182,10 @@ test "scanBlock without callback" {
 
 test "scanBlock callback error handling" {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{});
+    var db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     try std.testing.expectError(error.ScanTerminated, scanBlock(&db, "hello foobar", scratch, .{
@@ -201,10 +201,10 @@ test "scanBlock callback error handling" {
 
 test scanVector {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -228,10 +228,10 @@ test scanVector {
 
 test "scanVector no matches" {
     const pattern: Pattern = try .parse("xyz");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -255,10 +255,10 @@ test "scanVector no matches" {
 
 test "scanVector empty data" {
     const pattern: Pattern = try .parse("hello");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{};
@@ -279,10 +279,10 @@ test "scanVector empty data" {
 
 test "scanVector multiple matches" {
     const pattern: Pattern = try .parse("hello");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -315,10 +315,10 @@ test "scanVector multiple matches" {
 
 test "scanVector without callback" {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -332,10 +332,10 @@ test "scanVector without callback" {
 
 test "scanVector callback error handling" {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const data = [_]std.posix.iovec_const{
@@ -358,10 +358,10 @@ test "scan with different pattern types" {
     // Test with simple literal pattern
     {
         const pattern: Pattern = try .parse("hello");
-        const db: Database = try .compile(&pattern, .{ .literal = true });
+        var db: Database = try .compile(&pattern, .{ .literal = true });
         defer db.deinit();
 
-        const scratch = try db.allocScratch();
+        var scratch = try db.allocScratch();
         defer scratch.deinit();
 
         var match_found = false;
@@ -381,10 +381,10 @@ test "scan with different pattern types" {
     // Test with complex regex pattern
     {
         const pattern: Pattern = try .parse("\\b\\w+@\\w+\\.\\w+\\b");
-        const db: Database = try .compile(&pattern, .{});
+        var db: Database = try .compile(&pattern, .{});
         defer db.deinit();
 
-        const scratch = try db.allocScratch();
+        var scratch = try db.allocScratch();
         defer scratch.deinit();
 
         var match_found = false;
@@ -406,10 +406,10 @@ test "scan with different pattern types" {
 
 test scanStream {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello foobar world";
@@ -430,10 +430,10 @@ test scanStream {
 
 test "scanStream no matches" {
     const pattern: Pattern = try .parse("xyz");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello world";
@@ -454,10 +454,10 @@ test "scanStream no matches" {
 
 test "scanStream empty data" {
     const pattern: Pattern = try .parse("hello");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "";
@@ -478,10 +478,10 @@ test "scanStream empty data" {
 
 test "scanStream multiple matches" {
     const pattern: Pattern = try .parse("hello");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello world hello";
@@ -507,10 +507,10 @@ test "scanStream multiple matches" {
 
 test "scanStream without callback" {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello foobar world";
@@ -522,10 +522,10 @@ test "scanStream without callback" {
 
 test "scanStream callback error handling" {
     const pattern: Pattern = try .parse("f[o]+");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const test_data = "hello foobar world";
@@ -544,10 +544,10 @@ test "scanStream callback error handling" {
 
 test "scanStream large data" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Create data larger than page size to test chunked reading

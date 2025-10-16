@@ -49,8 +49,9 @@ pub fn compile(expr: []const u8) !Regex {
 ///
 /// ## Effects
 /// Frees the underlying Hyperscan database.
-pub fn deinit(self: *const Regex) void {
+pub fn deinit(self: *Regex) void {
     self.db.deinit();
+    self.* = undefined;
 }
 
 /// Options for finding matches.
@@ -134,7 +135,7 @@ pub fn findIndex(self: *const Regex, data: []const u8, opts: FindOptions) !?Matc
         .longest = opts.longest,
     };
 
-    const scratch = try self.db.allocScratch();
+    var scratch = try self.db.allocScratch();
     defer scratch.deinit();
 
     self.db.scanBlock(data, scratch, .{
@@ -236,7 +237,7 @@ pub fn findAllIndex(self: *const Regex, allocator: std.mem.Allocator, data: []co
         .longest = opts.longest,
     };
 
-    const scratch = try self.db.allocScratch();
+    var scratch = try self.db.allocScratch();
     defer scratch.deinit();
 
     try self.db.scanBlock(data, scratch, .{
@@ -403,7 +404,7 @@ pub fn split(self: *const Regex, allocator: std.mem.Allocator, data: []const u8)
 // Unit Tests
 
 test compile {
-    const regex = try Regex.compile("hello");
+    var regex = try Regex.compile("hello");
     defer regex.deinit();
 
     if (try regex.find("hello world", .{})) |matched| {
@@ -414,7 +415,7 @@ test compile {
 }
 
 test match {
-    const regex = try Regex.compile("hello");
+    var regex = try Regex.compile("hello");
     defer regex.deinit();
 
     try std.testing.expect(try regex.match("hello world"));
@@ -422,7 +423,7 @@ test match {
 }
 
 test find {
-    const regex = try Regex.compile("hello");
+    var regex = try Regex.compile("hello");
     defer regex.deinit();
 
     if (try regex.find("hello world", .{})) |matched| {
@@ -433,7 +434,7 @@ test find {
 }
 
 test findIndex {
-    const regex = try Regex.compile("hello");
+    var regex = try Regex.compile("hello");
     defer regex.deinit();
 
     if (try regex.findIndex("hello world", .{})) |span| {
@@ -448,7 +449,7 @@ test findIndex {
 }
 
 test findAll {
-    const regex = try Regex.compile("he[l]+o");
+    var regex = try Regex.compile("he[l]+o");
     defer regex.deinit();
 
     const matches = try regex.findAll(std.testing.allocator, "hello world helo helo", .{});
@@ -461,7 +462,7 @@ test findAll {
 }
 
 test findAllIndex {
-    const regex = try Regex.compile("he[l]+o");
+    var regex = try Regex.compile("he[l]+o");
     defer regex.deinit();
 
     if (try regex.findAllIndex(std.testing.allocator, "hello world helo helo", .{})) |spans| {
@@ -480,7 +481,7 @@ test findAllIndex {
 }
 
 test "findAllIndex with longest option (disambiguate same start)" {
-    const regex = try Regex.compile("a(|b)");
+    var regex = try Regex.compile("a(|b)");
     defer regex.deinit();
 
     if (try regex.findAllIndex(std.testing.allocator, "ab a abb", .{ .longest = true })) |spans_longest| {
@@ -499,7 +500,7 @@ test "findAllIndex with longest option (disambiguate same start)" {
 }
 
 test "findAllIndex default without ambiguity" {
-    const regex = try Regex.compile("ab+");
+    var regex = try Regex.compile("ab+");
     defer regex.deinit();
 
     if (try regex.findAllIndex(std.testing.allocator, "ab a abb", .{})) |spans| {
@@ -518,7 +519,7 @@ test "findAllIndex default without ambiguity" {
 }
 
 test replace {
-    const regex = try Regex.compile("he[l]+o");
+    var regex = try Regex.compile("he[l]+o");
     defer regex.deinit();
 
     const replaced = try regex.replace(std.testing.allocator, "hello world helo helo", "world");
@@ -528,7 +529,7 @@ test replace {
 }
 
 test "replace memory management" {
-    const regex = try Regex.compile("test");
+    var regex = try Regex.compile("test");
     defer regex.deinit();
 
     // Test with matches
@@ -548,7 +549,7 @@ test "replace memory management" {
 }
 
 test replaceFn {
-    const regex = try Regex.compile("he[l]+o");
+    var regex = try Regex.compile("he[l]+o");
     defer regex.deinit();
 
     const replaced = try regex.replaceFn(
@@ -567,7 +568,7 @@ test replaceFn {
 }
 
 test "find with longest option" {
-    const regex = try Regex.compile("a+b?");
+    var regex = try Regex.compile("a+b?");
     defer regex.deinit();
 
     // 默认最左匹配（非最长）
@@ -586,7 +587,7 @@ test "find with longest option" {
 }
 
 test "findAll with longest option" {
-    const regex = try Regex.compile("a(|b)");
+    var regex = try Regex.compile("a(|b)");
     defer regex.deinit();
 
     const input = "ab a abb";
@@ -602,7 +603,7 @@ test "findAll with longest option" {
 }
 
 test "replace with longest option" {
-    const regex = try Regex.compile("a(|b)");
+    var regex = try Regex.compile("a(|b)");
     defer regex.deinit();
 
     const replaced = try regex.replace(std.testing.allocator, "ab a abb", "X");
@@ -612,7 +613,7 @@ test "replace with longest option" {
 }
 
 test split {
-    const regex = try Regex.compile("a+");
+    var regex = try Regex.compile("a+");
     defer regex.deinit();
 
     const parts = try regex.split(std.testing.allocator, "abaabaccadaaae");
@@ -622,7 +623,7 @@ test split {
 }
 
 test "replaceFn returns null keeps original" {
-    const regex = try Regex.compile("x+");
+    var regex = try Regex.compile("x+");
     defer regex.deinit();
 
     const input = "abxxcdx";
@@ -642,7 +643,7 @@ test "replaceFn returns null keeps original" {
 }
 
 test "findAll returns null when no match" {
-    const regex = try Regex.compile("hello");
+    var regex = try Regex.compile("hello");
     defer regex.deinit();
 
     const matches = try regex.findAll(std.testing.allocator, "world", .{});
@@ -650,7 +651,7 @@ test "findAll returns null when no match" {
 }
 
 test "split without delimiter returns input" {
-    const regex = try Regex.compile(",");
+    var regex = try Regex.compile(",");
     defer regex.deinit();
 
     const parts = try regex.split(std.testing.allocator, "abc");
@@ -660,7 +661,7 @@ test "split without delimiter returns input" {
 }
 
 test "split only delimiters returns empty slice" {
-    const regex = try Regex.compile(",");
+    var regex = try Regex.compile(",");
     defer regex.deinit();
 
     const parts = try regex.split(std.testing.allocator, ",,,");

@@ -78,9 +78,9 @@ pub fn open(db: *const Database, opts: OpenOptions) !Stream {
 /// try stream.close(scratch, .{ .onEvent = onMatch });
 /// ```
 pub fn scan(self: *const Stream, data: []const u8, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx: match.Context = .init(opts.onEvent, opts.context);
+    var ctx: match.Context = .init(opts.onEvent, opts.context);
 
-    return check(hs.hs_scan_stream(self.stream_id, data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
+    return check(hs.hs_scan_stream(self.stream_id, data.ptr, @intCast(data.len), opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, &ctx));
 }
 
 /// Close a stream.
@@ -105,9 +105,9 @@ pub fn scan(self: *const Stream, data: []const u8, scratch: Scratch, opts: ScanO
 /// try stream.close(scratch, .{ .onEvent = onMatch });
 /// ```
 pub fn close(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx: match.Context = .init(opts.onEvent, opts.context);
+    var ctx: match.Context = .init(opts.onEvent, opts.context);
 
-    return check(hs.hs_close_stream(self.stream_id, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
+    return check(hs.hs_close_stream(self.stream_id, @ptrCast(scratch.ptr), ctx.trampoline, &ctx));
 }
 
 /// Reset a stream to an initial state.
@@ -136,9 +136,9 @@ pub fn close(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
 /// try stream.close(scratch, .{ .onEvent = onMatch });
 /// ```
 pub fn reset(self: *const Stream, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx: match.Context = .init(opts.onEvent, opts.context);
+    var ctx: match.Context = .init(opts.onEvent, opts.context);
 
-    return check(hs.hs_reset_stream(self.stream_id, opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
+    return check(hs.hs_reset_stream(self.stream_id, opts.flags, @ptrCast(scratch.ptr), ctx.trampoline, &ctx));
 }
 
 /// Duplicate the given stream.
@@ -204,9 +204,9 @@ pub fn copy(self: *const Stream) !Stream {
 /// ```
 ///
 pub fn resetAndCopy(self: *const Stream, to: *Stream, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx: match.Context = .init(opts.onEvent, opts.context);
+    var ctx: match.Context = .init(opts.onEvent, opts.context);
 
-    return check(hs.hs_reset_and_copy_stream(to.stream_id, self.stream_id, @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
+    return check(hs.hs_reset_and_copy_stream(to.stream_id, self.stream_id, @ptrCast(scratch.ptr), ctx.trampoline, &ctx));
 }
 
 /// Creates a compressed representation of the provided stream in the buffer provided.
@@ -295,20 +295,20 @@ pub fn expand(db: *const Database, buf: []const u8) !Stream {
 /// defer stream.deinit();
 /// ```
 pub fn resetAndExpand(self: *Stream, buf: []const u8, scratch: Scratch, opts: ScanOptions) !void {
-    const ctx: match.Context = .init(opts.onEvent, opts.context);
+    var ctx: match.Context = .init(opts.onEvent, opts.context);
 
-    return check(hs.hs_reset_and_expand_stream(self.stream_id, buf.ptr, @intCast(buf.len), @ptrCast(scratch.ptr), ctx.trampoline, @constCast(&ctx)));
+    return check(hs.hs_reset_and_expand_stream(self.stream_id, buf.ptr, @intCast(buf.len), @ptrCast(scratch.ptr), ctx.trampoline, &ctx));
 }
 
 // Unit tests
 
 test open {
     const foobar: Pattern = try .parse("f[o]+bar");
-    const db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
@@ -323,11 +323,11 @@ test scan {
     const foobar: Pattern = try .parse("f[o]+bar");
 
     // compile the pattern into a streaming database
-    const db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
@@ -367,11 +367,11 @@ test close {
     const foobar: Pattern = try .parse("f[o]+bar+$");
 
     // compile the pattern into a streaming database
-    const db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
@@ -414,11 +414,11 @@ test reset {
     const foobar: Pattern = try .parse("f[o]+bar");
 
     // compile the pattern into a streaming database
-    const db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
@@ -467,11 +467,11 @@ test copy {
     const foobar: Pattern = try .parse("f[o]+bar");
 
     // compile the pattern into a streaming database
-    const db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
@@ -523,11 +523,11 @@ test resetAndCopy {
     const foobar: Pattern = try .parse("f[o]+bar");
 
     // compile the pattern into a streaming database
-    const db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&foobar, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     // allocate the scratch space
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // open the stream
@@ -581,7 +581,7 @@ test resetAndCopy {
 
 test "open steam with non-streaming database" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .block = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .block = true } });
     defer db.deinit();
 
     try std.testing.expectError(error.DbModeError, db.openStream(.{}));
@@ -589,10 +589,10 @@ test "open steam with non-streaming database" {
 
 test "scan with empty data" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -616,10 +616,10 @@ test "scan with empty data" {
 
 test "scan with null event handler" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -631,10 +631,10 @@ test "scan with null event handler" {
 
 test "close without scan" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -645,10 +645,10 @@ test "close without scan" {
 
 test "reset without scan" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -662,10 +662,10 @@ test "reset without scan" {
 
 test "scan with very large data" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -695,10 +695,10 @@ test "scan with very large data" {
 
 test "scan with special characters" {
     const pattern: Pattern = try .parse("\\x00\\x01\\x02");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -722,10 +722,10 @@ test "scan with special characters" {
 
 test "scan with unicode characters" {
     const pattern: Pattern = try .parse("测试");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -751,10 +751,10 @@ test "multiple scans with different patterns" {
         try .parse("hello"),
         try .parse("world"),
     };
-    const db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
@@ -786,10 +786,10 @@ test "multiple scans with different patterns" {
 
 test "multiple streams with same database" {
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Create multiple streams
@@ -846,27 +846,29 @@ test "multiple streams with same database" {
 test "scan multi parts data and terminate on second match" {
     // Parse a pattern that will match multiple times
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Track matches and termination
-    var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
-    defer matches.deinit(std.testing.allocator);
-    var terminated = false;
+    const Context = struct {
+        matches: std.ArrayList(u64) = .empty,
+        terminated: bool = false,
+    };
+
+    var context: Context = .{};
+
+    defer context.matches.deinit(std.testing.allocator);
 
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                const ctx = evt.data(struct {
-                    matches: *std.ArrayList(u64),
-                    terminated: *bool,
-                });
+                const ctx = evt.data(Context);
 
                 // Record the match
                 ctx.matches.append(std.testing.allocator, evt.to) catch |err| {
@@ -876,57 +878,58 @@ test "scan multi parts data and terminate on second match" {
 
                 // Terminate on second match
                 if (ctx.matches.items.len >= 2) {
-                    ctx.terminated.* = true;
+                    ctx.terminated = true;
                     return error.Terminate;
                 }
             }
         }.handler,
-        .context = @constCast(&.{ .matches = &matches, .terminated = &terminated }),
+        .context = &context,
     };
 
     // Scan first part - should match once
     try stream.scan("first test data", scratch, opts);
-    try std.testing.expectEqual(1, matches.items.len);
-    try std.testing.expectEqual(10, matches.items[0]); // "test" at position 6-10
-    try std.testing.expect(!terminated);
+    try std.testing.expectEqual(1, context.matches.items.len);
+    try std.testing.expectEqual(10, context.matches.items[0]); // "test" at position 6-10
+    try std.testing.expect(!context.terminated);
 
     // Scan second part - should match second time and terminate
     try std.testing.expectError(error.ScanTerminated, stream.scan(" second test data", scratch, opts));
-    try std.testing.expectEqual(2, matches.items.len);
-    try std.testing.expectEqual(27, matches.items[1]); // "test" at position 23-27
-    try std.testing.expect(terminated);
+    try std.testing.expectEqual(2, context.matches.items.len);
+    try std.testing.expectEqual(27, context.matches.items[1]); // "test" at position 23-27
+    try std.testing.expect(context.terminated);
 
     // Scan third part - should be skipped due to termination
     // This should not cause any additional matches
-    const before_count = matches.items.len;
+    const before_count = context.matches.items.len;
     try std.testing.expectError(error.ScanTerminated, stream.scan(" third test data", scratch, opts));
-    try std.testing.expectEqual(before_count, matches.items.len); // No new matches
+    try std.testing.expectEqual(before_count, context.matches.items.len); // No new matches
 }
 
 test "scan multi parts data and terminate on first match" {
     // Parse a pattern that will match multiple times
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Track matches and termination
-    var matches = try std.ArrayList(u64).initCapacity(std.testing.allocator, 10);
-    defer matches.deinit(std.testing.allocator);
-    var terminated = false;
+    const Context = struct {
+        matches: std.ArrayList(u64) = .empty,
+        terminated: bool = false,
+    };
+
+    var context: Context = .{};
+    defer context.matches.deinit(std.testing.allocator);
 
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                const ctx = evt.data(struct {
-                    matches: *std.ArrayList(u64),
-                    terminated: *bool,
-                });
+                const ctx = evt.data(Context);
 
                 // Record the match
                 ctx.matches.append(std.testing.allocator, evt.to) catch |err| {
@@ -935,23 +938,23 @@ test "scan multi parts data and terminate on first match" {
                 };
 
                 // Terminate on first match
-                ctx.terminated.* = true;
+                ctx.terminated = true;
                 return error.Terminate;
             }
         }.handler,
-        .context = @constCast(&.{ .matches = &matches, .terminated = &terminated }),
+        .context = &context,
     };
 
     // Scan first part - should match once and terminate immediately
     try std.testing.expectError(error.ScanTerminated, stream.scan("first test data", scratch, opts));
-    try std.testing.expectEqual(1, matches.items.len);
-    try std.testing.expectEqual(10, matches.items[0]); // "test" at position 6-10
-    try std.testing.expect(terminated);
+    try std.testing.expectEqual(1, context.matches.items.len);
+    try std.testing.expectEqual(10, context.matches.items[0]); // "test" at position 6-10
+    try std.testing.expect(context.terminated);
 
     // Scan second part - should be skipped due to previous termination
-    const before_count = matches.items.len;
+    const before_count = context.matches.items.len;
     try std.testing.expectError(error.ScanTerminated, stream.scan(" second test data", scratch, opts));
-    try std.testing.expectEqual(before_count, matches.items.len); // No new matches
+    try std.testing.expectEqual(before_count, context.matches.items.len); // No new matches
 }
 
 test "scan multi parts data with multiple patterns and terminate on second match" {
@@ -960,27 +963,28 @@ test "scan multi parts data with multiple patterns and terminate on second match
         try .parse("hello"),
         try .parse("world"),
     };
-    const db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     const stream = try db.openStream(.{});
     defer stream.close(scratch, .{}) catch {};
 
     // Track matches and termination
-    var matches: std.ArrayList(struct { id: u32, to: u64 }) = try .initCapacity(std.testing.allocator, 10);
-    defer matches.deinit(std.testing.allocator);
-    var terminated = false;
+    const Context = struct {
+        matches: std.ArrayList(struct { id: u32, to: u64 }) = .empty,
+        terminated: bool = false,
+    };
+
+    var context: Context = .{};
+    defer context.matches.deinit(std.testing.allocator);
 
     const opts = ScanOptions{
         .onEvent = struct {
             fn handler(evt: match.Event) !void {
-                const ctx = evt.data(struct {
-                    matches: *std.ArrayList(struct { id: u32, to: u64 }),
-                    terminated: *bool,
-                });
+                const ctx = evt.data(Context);
 
                 // Record the match
                 ctx.matches.append(std.testing.allocator, .{ .id = evt.id, .to = evt.to }) catch |err| {
@@ -990,32 +994,32 @@ test "scan multi parts data with multiple patterns and terminate on second match
 
                 // Terminate on second match
                 if (ctx.matches.items.len >= 2) {
-                    ctx.terminated.* = true;
+                    ctx.terminated = true;
                     return error.Terminate;
                 }
             }
         }.handler,
-        .context = @constCast(&.{ .matches = &matches, .terminated = &terminated }),
+        .context = &context,
     };
 
     // Scan first part - should match "hello"
     try stream.scan("hello ", scratch, opts);
-    try std.testing.expectEqual(1, matches.items.len);
-    try std.testing.expectEqual(0, matches.items[0].id); // "hello" pattern id
-    try std.testing.expectEqual(5, matches.items[0].to); // "hello" at position 0-5
-    try std.testing.expect(!terminated);
+    try std.testing.expectEqual(1, context.matches.items.len);
+    try std.testing.expectEqual(0, context.matches.items[0].id); // "hello" pattern id
+    try std.testing.expectEqual(5, context.matches.items[0].to); // "hello" at position 0-5
+    try std.testing.expect(!context.terminated);
 
     // Scan second part - should match "world" and terminate
     try std.testing.expectError(error.ScanTerminated, stream.scan("world ", scratch, opts));
-    try std.testing.expectEqual(2, matches.items.len);
-    try std.testing.expectEqual(1, matches.items[1].id); // "world" pattern id
-    try std.testing.expectEqual(11, matches.items[1].to); // "world" at position 6-11
-    try std.testing.expect(terminated);
+    try std.testing.expectEqual(2, context.matches.items.len);
+    try std.testing.expectEqual(1, context.matches.items[1].id); // "world" pattern id
+    try std.testing.expectEqual(11, context.matches.items[1].to); // "world" at position 6-11
+    try std.testing.expect(context.terminated);
 
     // Scan third part - should be skipped due to termination
-    const before_count = matches.items.len;
+    const before_count = context.matches.items.len;
     try std.testing.expectError(error.ScanTerminated, stream.scan("hello world", scratch, opts));
-    try std.testing.expectEqual(before_count, matches.items.len); // No new matches
+    try std.testing.expectEqual(before_count, context.matches.items.len); // No new matches
 }
 
 // Compress and expand tests
@@ -1023,10 +1027,10 @@ test "scan multi parts data with multiple patterns and terminate on second match
 test "compress stream" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream
@@ -1047,10 +1051,10 @@ test "compress stream" {
 test "compress empty stream" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream but don't scan anything
@@ -1068,10 +1072,10 @@ test "compress empty stream" {
 test "expand stream" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
@@ -1111,10 +1115,10 @@ test "compress and expand with multiple patterns" {
         try .parse("foobar"),
         try .parse("he[l]+o"),
     };
-    const db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
@@ -1154,10 +1158,10 @@ test "compress and expand with multiple patterns" {
 test "compress and expand round trip" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
@@ -1209,7 +1213,7 @@ test "compress and expand round trip" {
 test "expand with invalid data" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
     // Try to expand with invalid data
@@ -1220,10 +1224,10 @@ test "expand with invalid data" {
 test "compress and expand with large stream state" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("f[o]+bar");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_large = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_large = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;
@@ -1272,10 +1276,10 @@ test "compress and expand with large stream state" {
 test resetAndExpand {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;
@@ -1316,10 +1320,10 @@ test resetAndExpand {
 test "resetAndExpand with EOD matches" {
     // Parse a pattern that requires EOD (end of data) to match
     const pattern: Pattern = try .parse("test$");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan partial data
@@ -1375,10 +1379,10 @@ test "resetAndExpand with multiple patterns" {
         try .parse("hello"),
         try .parse("world"),
     };
-    const db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var matches: std.ArrayList(u32) = try .initCapacity(std.testing.allocator, 10);
@@ -1422,10 +1426,10 @@ test "resetAndExpand with multiple patterns" {
 test "resetAndExpand round trip" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Open a stream and scan some data
@@ -1487,10 +1491,10 @@ test "resetAndExpand round trip" {
 test "resetAndExpand with invalid data" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("test");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Create a stream for resetAndExpand
@@ -1505,10 +1509,10 @@ test "resetAndExpand with invalid data" {
 test "resetAndExpand with large stream state" {
     // Parse a pattern for streaming
     const pattern: Pattern = try .parse("f[o]+bar");
-    const db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_large = true } });
+    var db: Database = try .compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_large = true } });
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     var match_count: u32 = 0;

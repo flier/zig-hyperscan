@@ -139,25 +139,26 @@ pub fn size(self: *const Scratch) !usize {
 ///
 /// ## Example
 /// ```zig
-/// const scratch = try Scratch.alloc(&db);
+/// var scratch = try Scratch.alloc(&db);
 /// defer scratch.deinit(); // Free the scratch space when done
 ///
 /// // Use the scratch space...
 /// ```
-pub fn deinit(self: *const Scratch) void {
+pub fn deinit(self: *Scratch) void {
     check(hs.hs_free_scratch(self.ptr)) catch |e| {
         std.log.err("free scratch: {s}", .{@errorName(e)});
     };
+    self.* = undefined;
 }
 
 // Unit tests
 
 test alloc {
     const pattern: Pattern = try .parse("foo");
-    const db: Database = try .compile(&pattern, .{});
+    var db: Database = try .compile(&pattern, .{});
     defer db.deinit();
 
-    const scratch = try alloc(&db);
+    var scratch = try alloc(&db);
     defer scratch.deinit();
 
     try std.testing.expect(try scratch.size() >= 1000);
@@ -165,7 +166,7 @@ test alloc {
 
 test realloc {
     const foo: Pattern = try .parse("foo");
-    const db: Database = try .compile(&foo, .{});
+    var db: Database = try .compile(&foo, .{});
     defer db.deinit();
 
     var scratch = try db.allocScratch();
@@ -174,7 +175,7 @@ test realloc {
     const scratch_size = try scratch.size();
 
     const foobar: Pattern = try .parse("foobar");
-    const db2: Database = try .compile(&foobar, .{});
+    var db2: Database = try .compile(&foobar, .{});
     defer db2.deinit();
 
     try scratch.realloc(&db2);
@@ -184,13 +185,13 @@ test realloc {
 
 test clone {
     const foo: Pattern = try .parse("foo");
-    const db: Database = try .compile(&foo, .{});
+    var db: Database = try .compile(&foo, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
-    const scratch2 = try scratch.clone();
+    var scratch2 = try scratch.clone();
     defer scratch2.deinit();
 
     try std.testing.expectEqual(try scratch.size(), try scratch2.size());
@@ -198,10 +199,10 @@ test clone {
 
 test size {
     const foo: Pattern = try .parse("foo");
-    const db: Database = try .compile(&foo, .{});
+    var db: Database = try .compile(&foo, .{});
     defer db.deinit();
 
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     try std.testing.expect(try scratch.size() >= 1000);

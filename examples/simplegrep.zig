@@ -29,7 +29,7 @@ pub fn main() !void {
     std.log.debug("Hyperscan {s} Database size: {d} bytes", .{ db_info, try db.size() });
 
     // Allocate scratch space for scanning
-    const scratch = try db.allocScratch();
+    var scratch = try db.allocScratch();
     defer scratch.deinit();
 
     // Scan input file

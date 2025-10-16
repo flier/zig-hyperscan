@@ -242,12 +242,12 @@ test "Options with custom values" {
 test compile {
     // Test basic pattern compilation
     const foobar: Pattern = try .parse("f[o]+bar");
-    const db = try compile(&foobar, .{});
+    var db = try compile(&foobar, .{});
     defer db.deinit();
 
     // Test literal pattern compilation
     const hello: Pattern = try .parse("hello");
-    const db2 = try compile(&hello, .{ .mode = .{ .stream = true }, .literal = true });
+    var db2 = try compile(&hello, .{ .mode = .{ .stream = true }, .literal = true });
     defer db2.deinit();
 }
 
@@ -255,19 +255,19 @@ test "compile with different modes" {
     const pattern: Pattern = try .parse("test");
 
     // Test block mode
-    const block_db = try compile(&pattern, .{ .mode = .{ .block = true } });
+    var block_db = try compile(&pattern, .{ .mode = .{ .block = true } });
     defer block_db.deinit();
 
     // Test stream mode
-    const stream_db = try compile(&pattern, .{ .mode = .{ .stream = true } });
+    var stream_db = try compile(&pattern, .{ .mode = .{ .stream = true } });
     defer stream_db.deinit();
 
     // Test vectored mode
-    const vectored_db = try compile(&pattern, .{ .mode = .{ .vectored = true } });
+    var vectored_db = try compile(&pattern, .{ .mode = .{ .vectored = true } });
     defer vectored_db.deinit();
 
     // Test with SOM horizon flags
-    const som_db = try compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_medium = true } });
+    var som_db = try compile(&pattern, .{ .mode = .{ .stream = true, .som_horizon_medium = true } });
     defer som_db.deinit();
 }
 
@@ -275,15 +275,15 @@ test "compile with different platforms" {
     const pattern: Pattern = try .parse("test");
 
     // Test with generic platform
-    const generic_db = try compile(&pattern, .{ .platform = Platform{ .tune = .generic } });
+    var generic_db = try compile(&pattern, .{ .platform = Platform{ .tune = .generic } });
     defer generic_db.deinit();
 
     // Test with specific platform
-    const haswell_db = try compile(&pattern, .{ .platform = Platform{ .tune = .haswell, .cpu_features = .avx2 } });
+    var haswell_db = try compile(&pattern, .{ .platform = Platform{ .tune = .haswell, .cpu_features = .avx2 } });
     defer haswell_db.deinit();
 
     // Test with null platform (default)
-    const null_platform_db = try compile(&pattern, .{ .platform = null });
+    var null_platform_db = try compile(&pattern, .{ .platform = null });
     defer null_platform_db.deinit();
 }
 
@@ -291,25 +291,25 @@ test "compile with literal flag" {
     const pattern: Pattern = try .parse("hello");
 
     // Test literal compilation
-    const db = try compile(&pattern, .{ .literal = true });
+    var db = try compile(&pattern, .{ .literal = true });
     defer db.deinit();
 }
 
 test "compile with complex patterns" {
     // Test complex regex pattern
     const complex_pattern: Pattern = try .parse("\\b\\w+@\\w+\\.\\w+\\b");
-    const complex_db = try compile(&complex_pattern, .{});
+    var complex_db = try compile(&complex_pattern, .{});
     defer complex_db.deinit();
 
     // Test pattern with flags
     const flagged_pattern: Pattern = try .parse("/test/i");
-    const flagged_db = try compile(&flagged_pattern, .{});
+    var flagged_db = try compile(&flagged_pattern, .{});
     defer flagged_db.deinit();
 
     // Test pattern with extensions
     const test_pattern: Pattern = try .parse("test");
     const ext_pattern = test_pattern.withExt(.{ .min_offset = 10, .max_offset = 100 });
-    const ext_db = try compile(&ext_pattern, .{});
+    var ext_db = try compile(&ext_pattern, .{});
     defer ext_db.deinit();
 }
 
@@ -331,7 +331,7 @@ test "compile with empty patterns" {
     // Test empty pattern
     {
         const empty_pattern: Pattern = .init("", .{ .allow_empty = true });
-        const empty_db = try compile(&empty_pattern, .{});
+        var empty_db = try compile(&empty_pattern, .{});
         defer empty_db.deinit();
     }
 
@@ -347,29 +347,29 @@ test "compile with empty patterns" {
 test "compile with unicode patterns" {
     // Test unicode pattern
     const unicode_pattern: Pattern = try .parse("测试");
-    const unicode_db = try compile(&unicode_pattern, .{});
+    var unicode_db = try compile(&unicode_pattern, .{});
     defer unicode_db.deinit();
 
     // Test unicode pattern with UTF-8 flag
     const unicode_flagged: Pattern = try .parse("/测试/8");
-    const unicode_flagged_db = try compile(&unicode_flagged, .{});
+    var unicode_flagged_db = try compile(&unicode_flagged, .{});
     defer unicode_flagged_db.deinit();
 }
 
 test "compile with special characters" {
     // Test pattern with special regex characters
     const special_pattern: Pattern = try .parse("[a-z]+\\d*");
-    const special_db = try compile(&special_pattern, .{});
+    var special_db = try compile(&special_pattern, .{});
     defer special_db.deinit();
 
     // Test pattern with anchors
     const anchor_pattern: Pattern = try .parse("^test$");
-    const anchor_db = try compile(&anchor_pattern, .{});
+    var anchor_db = try compile(&anchor_pattern, .{});
     defer anchor_db.deinit();
 
     // Test pattern with quantifiers
     const quantifier_pattern: Pattern = try .parse("a{3,5}");
-    const quantifier_db = try compile(&quantifier_pattern, .{});
+    var quantifier_db = try compile(&quantifier_pattern, .{});
     defer quantifier_db.deinit();
 }
 
@@ -377,11 +377,11 @@ test "compile with different allocators" {
     const pattern: Pattern = try .parse("test");
 
     // Test with testing allocator
-    const test_db = try compile(&pattern, .{ .allocator = std.testing.allocator });
+    var test_db = try compile(&pattern, .{ .allocator = std.testing.allocator });
     defer test_db.deinit();
 
     // Test with c allocator
-    const c_db = try compile(&pattern, .{ .allocator = std.heap.c_allocator });
+    var c_db = try compile(&pattern, .{ .allocator = std.heap.c_allocator });
     defer c_db.deinit();
 }
 
@@ -398,10 +398,10 @@ test compileMulti {
     // compile multiple patterns into a block database.
     {
         const patterns = [_]Pattern{ helo, world };
-        const db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator });
+        var db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator });
         defer db.deinit();
 
-        const scratch = try db.allocScratch();
+        var scratch = try db.allocScratch();
         defer scratch.deinit();
 
         // scan the text
@@ -415,7 +415,7 @@ test compileMulti {
                     };
                 }
             }.handler,
-            .context = @constCast(&ends),
+            .context = &ends,
         });
 
         // expect the last match offset to be found
@@ -427,10 +427,10 @@ test compileMulti {
     // compile multiple patterns with extensions into a block database.
     {
         const patterns = [_]Pattern{ helo, world.withExt(.{ .min_offset = 1 }) };
-        const db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator });
+        var db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator });
         defer db.deinit();
 
-        const scratch = try db.allocScratch();
+        var scratch = try db.allocScratch();
         defer scratch.deinit();
 
         // scan the text
@@ -444,7 +444,7 @@ test compileMulti {
                     };
                 }
             }.handler,
-            .context = @constCast(&ends),
+            .context = &ends,
         });
 
         // expect the last match offset to be found
@@ -456,10 +456,10 @@ test compileMulti {
     // compile the pure literal pattern into a block database.
     {
         const patterns = [_]Pattern{ hello, world };
-        const db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator, .literal = true });
+        var db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator, .literal = true });
         defer db.deinit();
 
-        const scratch = try db.allocScratch();
+        var scratch = try db.allocScratch();
         defer scratch.deinit();
 
         try db.scanBlock("hello world", scratch, .{
@@ -472,7 +472,7 @@ test compileMulti {
                     };
                 }
             }.handler,
-            .context = @constCast(&ends),
+            .context = &ends,
         });
 
         try std.testing.expectEqualSlices(u64, &[_]u64{ 5, 11 }, ends.items);
@@ -487,15 +487,15 @@ test "compile_multi with different modes" {
     };
 
     // Test block mode
-    const block_db = try compileMulti(&patterns, .{ .mode = .{ .block = true } });
+    var block_db = try compileMulti(&patterns, .{ .mode = .{ .block = true } });
     defer block_db.deinit();
 
     // Test stream mode
-    const stream_db = try compileMulti(&patterns, .{ .mode = .{ .stream = true } });
+    var stream_db = try compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer stream_db.deinit();
 
     // Test vectored mode
-    const vectored_db = try compileMulti(&patterns, .{ .mode = .{ .vectored = true } });
+    var vectored_db = try compileMulti(&patterns, .{ .mode = .{ .vectored = true } });
     defer vectored_db.deinit();
 }
 
@@ -506,11 +506,11 @@ test "compile_multi with different platforms" {
     };
 
     // Test with generic platform
-    const generic_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .generic } });
+    var generic_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .generic } });
     defer generic_db.deinit();
 
     // Test with specific platform
-    const haswell_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .haswell, .cpu_features = .avx2 } });
+    var haswell_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .haswell, .cpu_features = .avx2 } });
     defer haswell_db.deinit();
 }
 
@@ -521,7 +521,7 @@ test "compile_multi with patterns with IDs" {
         .{ .expr = "test3", .id = 3 },
     };
 
-    const db = try compileMulti(&patterns, .{});
+    var db = try compileMulti(&patterns, .{});
     defer db.deinit();
 }
 
@@ -532,7 +532,7 @@ test "compile_multi with patterns with extensions" {
         (try Pattern.parse("test3")).withExt(.{ .min_length = 5 }),
     };
 
-    const db = try compileMulti(&patterns, .{});
+    var db = try compileMulti(&patterns, .{});
     defer db.deinit();
 }
 
@@ -544,7 +544,7 @@ test "compile_multi with mixed patterns" {
         .{ .expr = "test4", .id = 4, .flags = .{ .caseless = true } },
     };
 
-    const db = try compileMulti(&patterns, .{});
+    var db = try compileMulti(&patterns, .{});
     defer db.deinit();
 }
 
@@ -555,7 +555,7 @@ test "compile_multi with empty pattern list" {
 
 test "compile_multi with single pattern" {
     const patterns = [_]Pattern{try .parse("test")};
-    const db = try compileMulti(&patterns, .{});
+    var db = try compileMulti(&patterns, .{});
     defer db.deinit();
 }
 
@@ -574,7 +574,7 @@ test "compile_multi with many patterns" {
         }
     }
 
-    const db = try compileMulti(patterns[0..100], .{});
+    var db = try compileMulti(patterns[0..100], .{});
     defer db.deinit();
 }
 
@@ -601,7 +601,7 @@ test "compile_multi with unicode patterns" {
         try .parse("/测试3/8"),
     };
 
-    const db = try compileMulti(&patterns, .{});
+    var db = try compileMulti(&patterns, .{});
     defer db.deinit();
 }
 
@@ -613,7 +613,7 @@ test "compile_multi with complex patterns" {
         try .parse("a{3,5}"),
     };
 
-    const db = try compileMulti(&patterns, .{});
+    var db = try compileMulti(&patterns, .{});
     defer db.deinit();
 }
 
@@ -624,11 +624,11 @@ test "compile_multi with different allocators" {
     };
 
     // Test with testing allocator
-    const test_db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator });
+    var test_db = try compileMulti(&patterns, .{ .allocator = std.testing.allocator });
     defer test_db.deinit();
 
     // Test with c allocator
-    const c_db = try compileMulti(&patterns, .{ .allocator = std.heap.c_allocator });
+    var c_db = try compileMulti(&patterns, .{ .allocator = std.heap.c_allocator });
     defer c_db.deinit();
 }
 
@@ -676,20 +676,20 @@ test "integration - complex workflow" {
     };
 
     // Test with different modes
-    const block_db = try compileMulti(&patterns, .{ .mode = .{ .block = true } });
+    var block_db = try compileMulti(&patterns, .{ .mode = .{ .block = true } });
     defer block_db.deinit();
 
-    const stream_db = try compileMulti(&patterns, .{ .mode = .{ .stream = true } });
+    var stream_db = try compileMulti(&patterns, .{ .mode = .{ .stream = true } });
     defer stream_db.deinit();
 
-    const vectored_db = try compileMulti(&patterns, .{ .mode = .{ .vectored = true } });
+    var vectored_db = try compileMulti(&patterns, .{ .mode = .{ .vectored = true } });
     defer vectored_db.deinit();
 
     // Test with different platforms
-    const generic_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .generic } });
+    var generic_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .generic } });
     defer generic_db.deinit();
 
-    const haswell_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .haswell, .cpu_features = .avx2 } });
+    var haswell_db = try compileMulti(&patterns, .{ .platform = .{ .tune = .haswell, .cpu_features = .avx2 } });
     defer haswell_db.deinit();
 }
 
@@ -698,13 +698,13 @@ test "integration - literal vs regex compilation" {
 
     // Test literal compilation
     {
-        const db = try compile(&pattern, .{ .literal = true });
+        var db = try compile(&pattern, .{ .literal = true });
         defer db.deinit();
     }
 
     // Test regex compilation
     {
-        const db = try compile(&pattern, .{});
+        var db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }
@@ -717,7 +717,7 @@ test "integration - pattern with all features" {
         .ext = .{ .min_offset = 10, .max_offset = 100, .min_length = 5 },
     };
 
-    const db = try compile(&complex_pattern, .{
+    var db = try compile(&complex_pattern, .{
         .mode = .{ .block = true },
         .platform = .{ .tune = .skylake, .cpu_features = .avx512 },
         .literal = false,
@@ -763,7 +763,7 @@ test "error handling - memory allocation errors" {
 
 test "edge cases - empty patterns" {
     const empty_pattern = Pattern.init("", .{ .allow_empty = true });
-    const db = try compile(&empty_pattern, .{});
+    var db = try compile(&empty_pattern, .{});
     defer db.deinit();
 }
 
@@ -773,7 +773,7 @@ test "edge cases - very long patterns" {
     @memset(long_expr, 'a');
 
     const long_pattern = try Pattern.parse(long_expr);
-    const db = try compile(&long_pattern, .{});
+    var db = try compile(&long_pattern, .{});
     defer db.deinit();
 }
 
@@ -791,7 +791,7 @@ test "edge cases - unicode patterns" {
 
     for (unicode_patterns) |s| {
         const pattern: Pattern = try .parse(s);
-        const db = try compile(&pattern, .{});
+        var db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }
@@ -807,7 +807,7 @@ test "edge cases - special characters" {
 
     for (special_patterns) |s| {
         const pattern: Pattern = try .parse(s);
-        const db = try compile(&pattern, .{});
+        var db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }
@@ -827,7 +827,7 @@ test "edge cases - extreme quantifiers" {
 
     for (patterns) |s| {
         const pattern: Pattern = try .parse(s);
-        const db = try compile(&pattern, .{});
+        var db = try compile(&pattern, .{});
         defer db.deinit();
     }
 }
