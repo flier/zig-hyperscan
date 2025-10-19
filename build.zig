@@ -31,15 +31,11 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(hyperscan_dylib);
 
-    if (with_zlinter) {
-        addlintCmd(b);
-    }
+    addlintCmd(b, with_zlinter);
 
-    if (with_examples) {
-        buildExamples(b, target, optimize, hyperscan_mod);
-    }
+    addExamples(b, target, optimize, hyperscan_mod, with_examples);
 
-    buildTests(b, target, optimize, hyperscan_mod);
+    addTests(b, target, optimize, hyperscan_mod);
 }
 
 fn addHyperscanToSearchPrefixes(b: *std.Build, target: std.Build.ResolvedTarget) void {
@@ -67,50 +63,54 @@ fn addSearchPrefix(b: *std.Build, prefix: []const u8) void {
     b.addSearchPrefix(prefix);
 }
 
-fn addlintCmd(b: *std.Build) void {
-    if (b.lazyImport(@This(), "zlinter")) |zlinter| {
-        const lint_cmd = b.step("lint", "Lint source code.");
+fn addlintCmd(b: *std.Build, with_zlinter: bool) void {
+    const lint_cmd = b.step("lint", "Lint source code.");
 
-        lint_cmd.dependOn(step: {
-            var builder = zlinter.builder(b, .{});
+    if (with_zlinter) {
+        if (b.lazyImport(@This(), "zlinter")) |zlinter| {
+            lint_cmd.dependOn(step: {
+                var builder = zlinter.builder(b, .{});
 
-            inline for (@typeInfo(zlinter.BuiltinLintRule).@"enum".fields) |f| {
-                const rule: zlinter.BuiltinLintRule = @enumFromInt(f.value);
+                inline for (@typeInfo(zlinter.BuiltinLintRule).@"enum".fields) |f| {
+                    const rule: zlinter.BuiltinLintRule = @enumFromInt(f.value);
 
-                const config = switch (rule) {
-                    .declaration_naming => .{
-                        .decl_name_min_len = .{
-                            .len = 2,
-                            .severity = .warning,
+                    const config = switch (rule) {
+                        .declaration_naming => .{
+                            .decl_name_min_len = .{
+                                .len = 2,
+                                .severity = .warning,
+                            },
                         },
-                    },
-                    .field_naming => .{
-                        .struct_field_min_len = .{
-                            .len = 2,
-                            .severity = .warning,
+                        .field_naming => .{
+                            .struct_field_min_len = .{
+                                .len = 2,
+                                .severity = .warning,
+                            },
                         },
-                    },
-                    .max_positional_args => .{
-                        .max = 7,
-                    },
-                    .no_inferred_error_unions => {
-                        continue;
-                    },
-                    else => .{},
-                };
+                        .max_positional_args => .{
+                            .max = 7,
+                        },
+                        .no_inferred_error_unions => {
+                            continue;
+                        },
+                        else => .{},
+                    };
 
-                builder.addRule(.{ .builtin = rule }, config);
-            }
+                    builder.addRule(.{ .builtin = rule }, config);
+                }
 
-            break :step builder.build();
-        });
+                break :step builder.build();
+            });
+        }
     } else {
-        std.log.info("zlinter not found", .{});
+        lint_cmd.dependOn(&b.addFail("lint command needs zlinter dependency with `-Dwith-zlinter` option").step);
     }
 }
 
-fn buildExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, hyperscan_mod: *std.Build.Module) void {
-    if (b.lazyDependency("clap", .{})) |clap| {
+fn addExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, hyperscan_mod: *std.Build.Module, with_examples: bool) void {
+    const simplegrep_step = b.step("simplegrep", "Run the simplegrep example");
+
+    if (with_examples) {
         const simplegrep = b.addExecutable(.{
             .name = "simplegrep",
             .root_module = b.createModule(.{
@@ -123,7 +123,10 @@ fn buildExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             }),
         });
 
-        simplegrep.root_module.addImport("clap", clap.module("clap"));
+        if (b.lazyDependency("clap", .{})) |clap| {
+            simplegrep.root_module.addImport("clap", clap.module("clap"));
+        }
+
         simplegrep.root_module.linkSystemLibrary("hs", .{});
         simplegrep.root_module.link_libc = true;
 
@@ -132,18 +135,17 @@ fn buildExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         const simplegrep_cmd = b.addRunArtifact(simplegrep);
         simplegrep_cmd.step.dependOn(b.getInstallStep());
 
-        const simplegrep_step = b.step("simplegrep", "Run the simplegrep");
         simplegrep_step.dependOn(&simplegrep_cmd.step);
 
         if (b.args) |args| {
             simplegrep_cmd.addArgs(args);
         }
     } else {
-        std.log.info("clap not found", .{});
+        simplegrep_step.dependOn(&b.addFail("simplegrep example needs `-Dwith-examples` option to be enabled").step);
     }
 }
 
-fn buildTests(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, hyperscan_mod: *std.Build.Module) void {
+fn addTests(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, hyperscan_mod: *std.Build.Module) void {
     const unit_tests_mod = b.addModule("unit_tests", .{
         .root_source_file = b.path("src/test.zig"),
         .target = target,

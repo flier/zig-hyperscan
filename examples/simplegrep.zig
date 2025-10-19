@@ -72,7 +72,9 @@ const Options = struct {
         };
         defer res.deinit();
 
-        if (res.args.help != 0) {
+        const exprs, const input_file = res.positionals;
+
+        if (res.args.help != 0 or exprs.len == 0 or input_file == null) {
             const stdout = std.fs.File.stdout();
             var writer = stdout.writer(buf);
             var out = &writer.interface;
@@ -88,8 +90,6 @@ const Options = struct {
 
             std.process.exit(0);
         }
-
-        const exprs, const input_file = res.positionals;
 
         return .{
             .stream = res.args.stream != 0,
