@@ -1,9 +1,8 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const skip_lint = b.option(bool, "skip-zlinter", "Don't run zlinter") orelse false;
-    const skip_examples = b.option(bool, "skip-examples", "Don't build examples") orelse false;
-    const skip_tests = b.option(bool, "skip-tests", "Don't build tests") orelse false;
+    const with_zlinter = b.option(bool, "with-zlinter", "Run zlinter") orelse false;
+    const with_examples = b.option(bool, "with-examples", "Build examples") orelse false;
 
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -32,17 +31,15 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(hyperscan_dylib);
 
-    if (!skip_lint) {
+    if (with_zlinter) {
         addlintCmd(b);
     }
 
-    if (!skip_examples) {
+    if (with_examples) {
         buildExamples(b, target, optimize, hyperscan_mod);
     }
 
-    if (!skip_tests) {
-        buildTests(b, target, optimize, hyperscan_mod);
-    }
+    buildTests(b, target, optimize, hyperscan_mod);
 }
 
 fn addHyperscanToSearchPrefixes(b: *std.Build, target: std.Build.ResolvedTarget) void {
@@ -107,6 +104,8 @@ fn addlintCmd(b: *std.Build) void {
 
             break :step builder.build();
         });
+    } else {
+        std.log.info("zlinter not found", .{});
     }
 }
 
@@ -139,6 +138,8 @@ fn buildExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         if (b.args) |args| {
             simplegrep_cmd.addArgs(args);
         }
+    } else {
+        std.log.info("clap not found", .{});
     }
 }
 

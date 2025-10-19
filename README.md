@@ -27,12 +27,12 @@ A high-performance Zig binding for [Hyperscan](https://github.com/intel/hypersca
 
 #### macOS (Homebrew)
 ```bash
-brew install hyperscan
+$ brew install hyperscan
 ```
 
 #### Ubuntu/Debian
 ```bash
-sudo apt-get install libhyperscan-dev
+$ sudo apt-get install libhyperscan-dev
 ```
 
 #### From Source
@@ -42,14 +42,14 @@ Follow the [official Hyperscan installation guide](http://intel.github.io/hypers
 
 Depending on which developer you are, you need to run different `zig fetch` commands:
 
-```shell
+```bash
 # Version of zig-hyperscan that works with a tagged release of Zig
 # Replace `<REPLACE ME>` with the version of zig-hyperscan that you want to use
 # See: https://github.com/flier/zig-hyperscan/releases
-zig fetch --save https://github.com/flier/zig-hyperscan/archive/refs/tags/<REPLACE ME>.tar.gz
+$ zig fetch --save https://github.com/flier/zig-hyperscan/archive/refs/tags/<REPLACE ME>.tar.gz
 
 # Version of zig-hyperscan that works with latest build of Zigs master branch
-zig fetch --save git+https://github.com/flier/zig-hyperscan
+$ zig fetch --save git+https://github.com/flier/zig-hyperscan
 ```
 
 And in your `build.zig`:
@@ -312,7 +312,15 @@ defer db.deinit();
 Run the test suite:
 
 ```bash
-zig build test
+$ zig build test
+```
+
+## Examples
+
+Run the `simplegrep` example:
+
+```bash
+$ zig build simplegrep -Dwith-examples -- -s zig build.zig
 ```
 
 ## Linting
@@ -320,7 +328,7 @@ zig build test
 Run with linting:
 
 ```bash
-zig build lint
+$ zig build lint -Dwith-zlinter
 ```
 
 ## Contributing

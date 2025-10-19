@@ -34,6 +34,7 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{matrix.zig}}
+      - run: zig build -Dwith-examples --summary all
       - run: zig build test -freference-trace=16 --summary all
 
   lint:
@@ -45,4 +46,4 @@ jobs:
           git config --global core.ignorecase false
       - uses: actions/checkout@v5
       - uses: mlugg/setup-zig@v2
-      - run: zig build lint
+      - run: zig build lint -Dwith-zlinter
